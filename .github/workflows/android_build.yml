@@ -1,15 +1,32 @@
 name: Dynamic WebAPK Generator
 
 on:
-# ... (Bagian inputs tetap sama) ...
   workflow_dispatch:
     inputs:
-# ... (Semua inputs tetap sama) ...
+      URL:
+        description: 'URL Website Utama'
+        required: true
+        default: 'https://default.com'
+      PACKAGE_NAME:
+        description: 'Package Name Aplikasi'
+        required: true
+        default: 'com.default.app'
+      ICON_BASE64:
+        description: 'Icon Aplikasi (Base64 String, Max ~50KB)'
+        required: true
+      KEY_ALIAS:
+        description: 'Alias Keystore'
+        required: true
+        default: 'mykey'
+      KEY_PASS:
+        description: 'Password Kunci'
+        required: true
+        default: 'android'
       STORE_PASS:
         description: 'Password Store'
         required: true
-        default: 'android' # Tambahkan default untuk kemudahan
-      
+        default: 'android'
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -25,18 +42,39 @@ jobs:
         distribution: 'temurin'
         cache: gradle
         
-    # 🎯 PERBAIKAN: Berikan Izin Eksekusi LANGSUNG setelah Checkout
-    # Ini mengatasi error 'chmod: cannot access 'gradlew': No such file or directory'
     - name: Ensure gradlew is executable
-      run: chmod +x gradlew
+      run: chmod +x gradlew # Ini sekarang akan berhasil jika file gradlew sudah di-commit
         
-    # 🛠️ FIX 1: Dinamis Mengganti Package Name, URL, dan Permissions
     - name: Update Configs
       run: |
-        # 1. Ganti Application ID di build.gradle
         sed -i 's/applicationId ".*"/applicationId "${{ github.event.inputs.PACKAGE_NAME }}"/g' app/build.gradle
-        
-        # 2. Ganti URL di strings.xml
         sed -i 's|<string name="web_url">.*</string>|<string name="web_url">${{ github.event.inputs.URL }}</string>|g' app/src/main/res/values/strings.xml
         
-    # ... (Semua langkah FIX 2, FIX 3, Build, dan Upload lainnya tetap sama) ...
+    - name: Decode Base64 Icon and Save
+      run: |
+        mkdir -p app/src/main/res/mipmap-xxhdpi/
+        echo "${{ github.event.inputs.ICON_BASE64 }}" | base64 --decode > app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+
+    - name: Generate Dynamic Keystore
+      run: |
+        keytool -genkey -v -keystore release-key.jks \
+        -alias ${{ github.event.inputs.KEY_ALIAS }} \
+        -keyalg RSA -keysize 2048 -validity 10000 \
+        -storepass ${{ github.event.inputs.STORE_PASS }} \
+        -keypass ${{ github.event.inputs.KEY_PASS }} \
+        -dname "CN=Unknown, OU=Unknown, O=Unknown, L=Unknown, S=Unknown, C=Unknown"
+      
+    - name: Clean and Build APK and AAB (Release Signed)
+      run: ./gradlew clean assembleRelease bundleRelease --no-daemon 
+
+    - name: Upload Release APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-signed-apk
+        path: app/build/outputs/apk/release/app-release.apk
+
+    - name: Upload Release AAB Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-signed-aab
+        path: app/build/outputs/bundle/release/app-release.aab
