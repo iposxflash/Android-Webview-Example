@@ -1,17 +1,17 @@
 name: Dynamic WebAPK Generator
 
 on:
-  # Pemicu yang menerima input dari website/URL
+  # Pemicu yang menerima input dari website (melalui backend/API)
   workflow_dispatch:
     inputs:
       URL:
         description: 'URL Website Utama'
         required: true
-        default: 'https://iposxflash.github.io/'
+        default: 'https://default.com'
       PACKAGE_NAME:
         description: 'Package Name Aplikasi'
         required: true
-        default: 'com.iposx.mywebapk'
+        default: 'com.default.app'
       ICON_BASE64:
         description: 'Icon Aplikasi (Base64 String)'
         required: true
@@ -39,28 +39,32 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
         cache: gradle
-
-    # FIX 1: Dinamis Mengganti Package Name di build.gradle
-    - name: Update Package Name and URL in Build Files
+        
+    # 🛠️ FIX 1: Dinamis Mengganti Package Name, URL, dan Permissions
+    - name: Update Configs and Permissions
       run: |
-        # Ganti Application ID di build.gradle
-        sed -i 's/applicationId "com.example.androidwebviewexample"/applicationId "${{ github.event.inputs.PACKAGE_NAME }}"/g' app/build.gradle
-
-        # Asumsi Anda menyimpan URL di strings.xml atau kode Java/Kotlin (Ganti URL di strings.xml)
-        # Cari baris yang mengandung URL lama, ganti dengan URL baru
+        # 1. Ganti Application ID di build.gradle
+        # Mengganti baris 'applicationId "com.tufanakcay.androidwebview"' dengan input dinamis
+        sed -i 's/applicationId ".*"/applicationId "${{ github.event.inputs.PACKAGE_NAME }}"/g' app/build.gradle
+        
+        # 2. Ganti URL di strings.xml (asumsi ada string bernama 'web_url')
+        # Jika Anda menyimpan URL di MainActivity.java, ganti script sed ini.
         sed -i 's|<string name="web_url">.*</string>|<string name="web_url">${{ github.event.inputs.URL }}</string>|g' app/src/main/res/values/strings.xml
         
-        # FIX: Tambahkan izin eksekusi secara paksa
+        # 3. FIX: Tambahkan izin eksekusi gradlew
         chmod +x gradlew
         
-    # FIX 2: Dekode Icon Base64 dan Simpan ke Folder Resource
+    # 🛠️ FIX 2: Dekode Icon Base64 dan Simpan ke Folder Resource
     - name: Decode Base64 Icon and Save
-      # Simpan PNG hasil dekode ke lokasi mipmap (icon launcher default)
       run: |
+        # Membuat folder jika belum ada (sesuai standar Android)
+        mkdir -p app/src/main/res/mipmap-xxhdpi/
+        # Dekode string Base64 yang panjang ke file PNG
         echo "${{ github.event.inputs.ICON_BASE64 }}" | base64 --decode > app/src/main/res/mipmap-xxhdpi/ic_launcher.png
 
-    # FIX 3: Generate Dynamic Keystore
+    # 🛠️ FIX 3: Generate Dynamic Keystore
     - name: Generate Dynamic Keystore
+      # Menggunakan input YML sebagai password keystore
       run: |
         keytool -genkey -v -keystore release-key.jks \
         -alias ${{ github.event.inputs.KEY_ALIAS }} \
@@ -69,23 +73,20 @@ jobs:
         -keypass ${{ github.event.inputs.KEY_PASS }} \
         -dname "CN=Unknown, OU=Unknown, O=Unknown, L=Unknown, S=Unknown, C=Unknown"
       
-    # Tambahkan Keystore ke konfigurasi signing di build.gradle (Jika belum ada)
-    # Ini langkah manual yang harus ditambahkan ke app/build.gradle Anda:
-    # signingConfigs {
-    #     release {
-    #         storeFile file("release-key.jks")
-    #         storePassword "${{ github.event.inputs.STORE_PASS }}" 
-    #         keyAlias "${{ github.event.inputs.KEY_ALIAS }}"
-    #         keyPassword "${{ github.event.inputs.KEY_PASS }}"
-    #     }
-    # }
+    - name: Clean and Build APK and AAB (Release Signed)
+      # Menjalankan assembleRelease (APK) DAN bundleRelease (AAB)
+      run: ./gradlew clean assembleRelease bundleRelease --no-daemon 
 
-    - name: Clean and Build Release APK
-      # Kita build release agar bisa menggunakan Keystore yang baru dibuat
-      run: ./gradlew clean assembleRelease --no-daemon 
-
+    # 5. Upload APK Artifact
     - name: Upload Release APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: app-release-signed-apk
         path: app/build/outputs/apk/release/app-release.apk
+
+    # 6. Upload AAB Artifact
+    - name: Upload Release AAB Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-signed-aab
+        path: app/build/outputs/bundle/release/app-release.aab
