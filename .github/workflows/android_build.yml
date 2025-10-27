@@ -1,45 +1,91 @@
-# Nama workflow yang muncul di GitHub Actions
-name: Android WebView Final Build
+name: Dynamic WebAPK Generator
 
-# Pemicu: Jalankan setiap kali ada push ke branch 'main'
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  # Pemicu yang menerima input dari website/URL
+  workflow_dispatch:
+    inputs:
+      URL:
+        description: 'URL Website Utama'
+        required: true
+        default: 'https://iposxflash.github.io/'
+      PACKAGE_NAME:
+        description: 'Package Name Aplikasi'
+        required: true
+        default: 'com.iposx.mywebapk'
+      ICON_BASE64:
+        description: 'Icon Aplikasi (Base64 String)'
+        required: true
+      KEY_ALIAS:
+        description: 'Alias Keystore'
+        required: true
+      KEY_PASS:
+        description: 'Password Kunci'
+        required: true
+      STORE_PASS:
+        description: 'Password Store'
+        required: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. Checkout Code: Mendapatkan salinan kode
     - name: Checkout Repository
       uses: actions/checkout@v3
 
-    # 2. Setup Java: Mengatur lingkungan Java 17 (standar untuk Gradle terbaru)
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
         java-version: '17'
         distribution: 'temurin'
-        cache: gradle # Menggunakan cache untuk dependensi Gradle
+        cache: gradle
 
-    # 3. FIX: Menambahkan Izin Eksekusi SECARA PAKSA
-    # Langkah ini memastikan 'gradlew' dapat dijalankan, mengatasi error izin Git.
-    - name: Fix gradlew permissions
-      run: chmod +x gradlew
+    # FIX 1: Dinamis Mengganti Package Name di build.gradle
+    - name: Update Package Name and URL in Build Files
+      run: |
+        # Ganti Application ID di build.gradle
+        sed -i 's/applicationId "com.example.androidwebviewexample"/applicationId "${{ github.event.inputs.PACKAGE_NAME }}"/g' app/build.gradle
 
-    # 4. Build Debug APK: Perintah build yang kuat
-    # 'assembleDebug' akan membuat file APK untuk pengujian.
-    - name: Build Debug APK
-      run: ./gradlew assembleDebug
+        # Asumsi Anda menyimpan URL di strings.xml atau kode Java/Kotlin (Ganti URL di strings.xml)
+        # Cari baris yang mengandung URL lama, ganti dengan URL baru
+        sed -i 's|<string name="web_url">.*</string>|<string name="web_url">${{ github.event.inputs.URL }}</string>|g' app/src/main/res/values/strings.xml
+        
+        # FIX: Tambahkan izin eksekusi secara paksa
+        chmod +x gradlew
+        
+    # FIX 2: Dekode Icon Base64 dan Simpan ke Folder Resource
+    - name: Decode Base64 Icon and Save
+      # Simpan PNG hasil dekode ke lokasi mipmap (icon launcher default)
+      run: |
+        echo "${{ github.event.inputs.ICON_BASE64 }}" | base64 --decode > app/src/main/res/mipmap-xxhdpi/ic_launcher.png
 
-    # 5. Upload Artifact: Mengunggah file APK yang sudah jadi
-    # Ini agar Anda bisa mengunduh APK langsung dari halaman GitHub Actions.
-    - name: Upload Debug APK Artifact
+    # FIX 3: Generate Dynamic Keystore
+    - name: Generate Dynamic Keystore
+      run: |
+        keytool -genkey -v -keystore release-key.jks \
+        -alias ${{ github.event.inputs.KEY_ALIAS }} \
+        -keyalg RSA -keysize 2048 -validity 10000 \
+        -storepass ${{ github.event.inputs.STORE_PASS }} \
+        -keypass ${{ github.event.inputs.KEY_PASS }} \
+        -dname "CN=Unknown, OU=Unknown, O=Unknown, L=Unknown, S=Unknown, C=Unknown"
+      
+    # Tambahkan Keystore ke konfigurasi signing di build.gradle (Jika belum ada)
+    # Ini langkah manual yang harus ditambahkan ke app/build.gradle Anda:
+    # signingConfigs {
+    #     release {
+    #         storeFile file("release-key.jks")
+    #         storePassword "${{ github.event.inputs.STORE_PASS }}" 
+    #         keyAlias "${{ github.event.inputs.KEY_ALIAS }}"
+    #         keyPassword "${{ github.event.inputs.KEY_PASS }}"
+    #     }
+    # }
+
+    - name: Clean and Build Release APK
+      # Kita build release agar bisa menggunakan Keystore yang baru dibuat
+      run: ./gradlew clean assembleRelease --no-daemon 
+
+    - name: Upload Release APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: app-debug-apk
-        # Path output standar untuk APK Debug
-        path: app/build/outputs/apk/debug/app-debug.apk
+        name: app-release-signed-apk
+        path: app/build/outputs/apk/release/app-release.apk
