@@ -3,11 +3,13 @@ plugins {
 }
 
 android {
-    namespace 'com.tufanakcay.androidwebview'
+    // Namespace ini akan diabaikan karena kita akan mengganti applicationId secara dinamis
+    namespace 'com.tufanakcay.androidwebview' 
     compileSdk 33
 
     defaultConfig {
-        applicationId "com.tufanakcay.androidwebview"
+        // PERHATIAN: Baris ini akan diganti sepenuhnya oleh script 'sed' di GitHub Actions!
+        applicationId "com.tufanakcay.androidwebview" 
         minSdk 23
         targetSdk 33
         versionCode 1
@@ -15,11 +17,28 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
+    
+    // --- START PERBAIKAN: Konfigurasi Signing Dinamis ---
+    signingConfigs {
+        release {
+            // File Keystore yang dibuat secara dinamis oleh 'keytool' di GitHub Actions
+            storeFile file("release-key.jks") 
+            
+            // Mengambil password dari Environment Variables yang disetel oleh input YML
+            storePassword System.getenv("STORE_PASS") 
+            keyAlias System.getenv("KEY_ALIAS")
+            keyPassword System.getenv("KEY_PASS")
+        }
+    }
+    // --- END PERBAIKAN ---
 
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            
+            // --- PERBAIKAN: Terapkan Konfigurasi Signing ---
+            signingConfig signingConfigs.release
         }
     }
     compileOptions {
@@ -29,7 +48,6 @@ android {
 }
 
 dependencies {
-
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.9.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
