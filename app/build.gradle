@@ -1,4 +1,10 @@
-// --- START PERBAIKAN KRITIS: MEMBACA FILE PROPERTI DI ROOT ---
+// 1. BLOK PLUGIN HARUS DI AWAL FILE
+plugins {
+    id 'com.android.application'
+}
+
+// 2. KODE KRITIS: MEMBACA FILE PROPERTI DI ROOT
+// Blok ini dipindahkan ke sini (setelah plugins) untuk memperbaiki error sintaksis Gradle 
 def releasePropsFile = rootProject.file('release.properties')
 def releaseProps = new Properties()
 if (releasePropsFile.exists()) {
@@ -10,11 +16,7 @@ if (releasePropsFile.exists()) {
 } else {
     println "WARNING: release.properties file does not exist. Using default/empty signing configs."
 }
-// --- END PERBAIKAN KRITIS ---
-
-plugins {
-    id 'com.android.application'
-}
+// -----------------------------------------------------------
 
 android {
     // Namespace ini akan diabaikan karena kita akan mengganti applicationId secara dinamis
@@ -32,26 +34,23 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     
-    // --- START PERBAIKAN: Konfigurasi Signing Dinamis ---
+    // Konfigurasi Signing Dinamis
     signingConfigs {
         release {
-            // Mengambil path file dari properti
+            // Mengambil path file dan kredensial dari properties yang dimuat di atas
             storeFile file(releaseProps.getProperty('storeFile') ?: "release-key.jks") 
-            
-            // Mengambil kredensial dari properti, jika tidak ada, gunakan string kosong
             storePassword releaseProps.getProperty('storePassword') ?: "" 
             keyAlias releaseProps.getProperty('keyAlias') ?: "" 
             keyPassword releaseProps.getProperty('keyPassword') ?: ""
         }
     }
-    // --- END PERBAIKAN ---
 
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             
-            // --- Terapkan Konfigurasi Signing ---
+            // Terapkan Konfigurasi Signing
             signingConfig signingConfigs.release
         }
     }
