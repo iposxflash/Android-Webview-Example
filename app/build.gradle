@@ -1,3 +1,5 @@
+// app/build.gradle
+
 // 1. BLOK PLUGIN HARUS DI AWAL FILE
 plugins {
     id 'com.android.application'
@@ -8,6 +10,7 @@ def releasePropsFile = rootProject.file('release.properties')
 def releaseProps = new Properties()
 if (releasePropsFile.exists()) {
     try {
+        // Menggunakan FileInputStream yang benar
         releaseProps.load(new FileInputStream(releasePropsFile))
     } catch (FileNotFoundException e) {
         println "WARNING: release.properties file not found: " + e.getMessage()
@@ -17,16 +20,13 @@ if (releasePropsFile.exists()) {
 }
 // -----------------------------------------------------------
 
-defaultConfig {
-        // Placeholder Package Name yang akan diganti oleh sed di YML
-        applicationId "com.tufanakcay.androidwebview" // atau "com.default.app"
-        // ...
-    }
-
+// 3. BLOK ANDROID HARUS MENGIKUTI DAN MENGANDUNG SEMUA KONFIGURASI SDK/VERSION
 android {
-    namespace 'com.tufanakcay.androidwebview' 
+    // Pastikan compileSdk didefinisikan di sini
     compileSdk 33
+    namespace 'com.tufanakcay.androidwebview' 
 
+    // defaultConfig harus ada di dalam blok android {}
     defaultConfig {
         applicationId "com.tufanakcay.androidwebview" 
         minSdk 23
@@ -40,7 +40,7 @@ android {
     // Konfigurasi Signing Dinamis
     signingConfigs {
         release {
-            // Menggunakan file() karena YML sekarang membuat Keystore di dalam folder 'app/'
+            // Menggunakan file() karena Keystore ada di folder 'app/'
             storeFile file(releaseProps.getProperty('storeFile') ?: "release-key.jks") 
             storePassword releaseProps.getProperty('storePassword') ?: "" 
             keyAlias releaseProps.getProperty('keyAlias') ?: "" 
@@ -62,6 +62,7 @@ android {
     }
 }
 
+// 4. BLOK DEPENDENSI DI AKHIR
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.9.0'
