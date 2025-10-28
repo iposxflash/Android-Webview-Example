@@ -6,7 +6,7 @@ on:
       URL:
         description: 'URL Website Utama'
         required: true
-        default: 'https://ojgrup.com'
+        default: 'https://default.com'
       PACKAGE_NAME:
         description: 'Package Name Aplikasi'
         required: true
@@ -45,16 +45,24 @@ jobs:
     - name: Ensure gradlew is executable
       run: chmod +x gradlew
         
-    - name: Update Configs
+    - name: Update Configs (Package Name dan URL)
       run: |
         # Mengganti Application ID di build.gradle
         sed -i 's/applicationId ".*"/applicationId "${{ github.event.inputs.PACKAGE_NAME }}"/g' app/build.gradle
         # Mengganti URL di strings.xml
         sed -i 's|<string name="web_url">.*</string>|<string name="web_url">${{ github.event.inputs.URL }}</string>|g' app/src/main/res/values/strings.xml
         
-    # Menghapus ikon lama untuk mencegah error 'Duplicate resources'
+    # 🎯 PERBAIKAN: Membuat file properties signing untuk Gradle (release.properties)
+    - name: Create Signing Properties File
+      run: |
+        echo "storeFile=release-key.jks" > release.properties
+        echo "keyAlias=${{ github.event.inputs.KEY_ALIAS }}" >> release.properties
+        echo "keyPassword=${{ github.event.inputs.KEY_PASS }}" >> release.properties
+        echo "storePassword=${{ github.event.inputs.STORE_PASS }}" >> release.properties
+        
     - name: Remove Existing Icons
       run: |
+        # Mengatasi error Duplicate Resources
         rm -f app/src/main/res/mipmap-xxhdpi/*
 
     - name: Decode Base64 Icon and Save
@@ -62,10 +70,10 @@ jobs:
         mkdir -p app/src/main/res/mipmap-xxhdpi/
         echo "${{ github.event.inputs.ICON_BASE64 }}" | base64 --decode > app/src/main/res/mipmap-xxhdpi/ic_launcher.png
 
-    # 🎯 PERBAIKAN KRITIS: Generate Dynamic Keystore di folder 'app/'
+    # Keystore dibuat di ROOT (release-key.jks)
     - name: Generate Dynamic Keystore
       run: |
-        keytool -genkey -v -keystore app/release-key.jks \
+        keytool -genkey -v -keystore release-key.jks \
         -alias ${{ github.event.inputs.KEY_ALIAS }} \
         -keyalg RSA -keysize 2048 -validity 10000 \
         -storepass ${{ github.event.inputs.STORE_PASS }} \
@@ -74,13 +82,13 @@ jobs:
       
     - name: Clean and Build APK and AAB (Release Signed)
       run: ./gradlew clean assembleRelease bundleRelease --no-daemon 
-
-    # 🎯 PERBAIKAN: Upload Keystore dari folder 'app/'
+      
+    # Upload Keystore dari ROOT
     - name: Upload Dynamic Keystore Artifact
       uses: actions/upload-artifact@v4
       with:
         name: release-keystore
-        path: app/release-key.jks
+        path: release-key.jks
         
     - name: Upload Release APK Artifact
       uses: actions/upload-artifact@v4
