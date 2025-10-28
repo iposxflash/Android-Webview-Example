@@ -28,7 +28,12 @@ public class MainActivity extends AppCompatActivity {
     private void viewUrl() {
 
         webView.getSettings().setJavaScriptEnabled(true);
-        webView.loadUrl("https://www.google.com");
+        
+        // 🎯 PERBAIKAN KRITIS: Muat URL dari strings.xml
+        String dynamicUrl = getString(R.string.web_url); 
+        
+        // Gunakan URL yang dimuat dari strings.xml, yang diubah oleh GitHub Actions
+        webView.loadUrl(dynamicUrl);
     }
 
     private void viewHtml() {
