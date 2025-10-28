@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Android Webview Example</string>
+    <string name="web_url">https://default.com</string>
 </resources>
