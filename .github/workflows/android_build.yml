@@ -72,19 +72,29 @@ jobs:
         
     - name: Remove Existing Icons
       run: |
-        # Hapus file ikon lama yang akan ditimpa
-        rm -f app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-        rm -f app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png 
+        # 🎯 PERBAIKAN KRITIS: Bersihkan file PNG dan WEBP di SEMUA folder mipmap untuk menghindari "Duplicate Resources"
+        echo "Starting aggressive cleanup of all ic_launcher files in all mipmap folders..."
+        
+        # Hapus file .png dan .webp di semua folder mipmap-* (e.g., hdpi, mdpi, xxhdpi)
+        rm -f app/src/main/res/mipmap-*/ic_launcher.png
+        rm -f app/src/main/res/mipmap-*/ic_launcher_round.png
+        rm -f app/src/main/res/mipmap-*/ic_launcher.webp
+        rm -f app/src/main/res/mipmap-*/ic_launcher_round.webp
+        
+        # Hapus juga file di folder mipmap-anydpi-v26
+        rm -f app/src/main/res/mipmap-anydpi-v26/*
+        
+        echo "Cleanup complete."
 
     - name: Download Icon from URL and Save
       run: |
         ICON_URL_INPUT="${{ github.event.inputs.ICON_URL }}" 
-        ICON_DIR="app/src/main/res/mipmap-xxhdpi/"
+        ICON_DIR="app/src/main/res/mipmap-xxhdpi/" # Targetkan folder resolusi tinggi
         mkdir -p $ICON_DIR
         
         echo "Downloading icon from: $ICON_URL_INPUT"
         
-        # 1. Unduh gambar
+        # 1. Unduh gambar ke ic_launcher.png
         curl -f -L "$ICON_URL_INPUT" -o $ICON_DIR/ic_launcher.png
         
         # 2. Duplikat file untuk ikon bulat (ic_launcher_round.png)
@@ -117,7 +127,6 @@ jobs:
       run: chmod 777 app/release-key.jks
       
     - name: Clean and Build APK and AAB (Release Signed)
-      # Menggunakan --stacktrace untuk mendapatkan detail penuh jika Gradle gagal
       run: ./gradlew clean assembleRelease bundleRelease --no-daemon --stacktrace
       
     - name: Upload Dynamic Keystore Artifact
