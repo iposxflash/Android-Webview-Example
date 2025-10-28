@@ -51,17 +51,16 @@ jobs:
         
     - name: Update Configs (Package Name, URL, dan App Name)
       run: |
-        # Menggunakan variabel shell dan meng-escape karakter khusus untuk SED
+        # Menggunakan escape karakter untuk URL agar aman dari masalah Bash
         URL_INPUT=$(echo "${{ github.event.inputs.URL }}" | sed 's/[\/&]/\\&/g')
         
-        # 1. Update Package Name (Ini sudah berhasil)
+        # 1. Update Package Name
         sed -i "s/applicationId \".*\"/applicationId \"${{ github.event.inputs.PACKAGE_NAME }}\"/g" app/build.gradle
         
-        # 2. Update App Name (Ini sudah berhasil)
+        # 2. Update App Name
         sed -i "s|<string name=\"app_name\">.*</string>|<string name=\"app_name\">${{ github.event.inputs.APP_NAME }}</string>|g" app/src/main/res/values/strings.xml
         
-        # 3. Update URL (🎯 PERBAIKAN FINAL: Menggunakan variabel yang sudah di-escape)
-        # Delimiter ; dan variabel yang sudah di-escape ($URL_INPUT) seharusnya menyelesaikan masalah.
+        # 3. Update URL (Menggunakan delimiter ; dan variabel yang di-escape)
         sed -i "s;<string name=\"web_url\">.*</string>;<string name=\"web_url\">$URL_INPUT</string>;g" app/src/main/res/values/strings.xml
         
     - name: Create Signing Properties File
@@ -73,7 +72,9 @@ jobs:
         
     - name: Remove Existing Icons
       run: |
-        rm -f app/src/main/res/mipmap-xxhdpi/*
+        # Hapus file ikon lama yang akan ditimpa
+        rm -f app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+        rm -f app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png 
 
     - name: Download Icon from URL and Save
       run: |
@@ -81,13 +82,25 @@ jobs:
         ICON_DIR="app/src/main/res/mipmap-xxhdpi/"
         mkdir -p $ICON_DIR
         
-        echo "Downloading icon from: $ICON_URL_INPUT" # Debugging
+        echo "Downloading icon from: $ICON_URL_INPUT"
         
-        # Curl harus berhasil karena URL Ikon Anda valid
+        # 1. Unduh gambar
         curl -f -L "$ICON_URL_INPUT" -o $ICON_DIR/ic_launcher.png
         
+        # 2. Duplikat file untuk ikon bulat (ic_launcher_round.png)
+        cp $ICON_DIR/ic_launcher.png $ICON_DIR/ic_launcher_round.png
+        
+        # Validasi Ikon
         if [ ! -s $ICON_DIR/ic_launcher.png ]; then
             echo "ERROR: File icon tidak diunduh atau ukurannya 0 byte. Ikon masih default."
+            exit 1
+        fi
+        
+        FILE_TYPE=$(file -b --mime-type $ICON_DIR/ic_launcher.png)
+        echo "Downloaded icon file type: $FILE_TYPE"
+        
+        if [[ "$FILE_TYPE" != "image/png" && "$FILE_TYPE" != "image/jpeg" ]]; then
+            echo "ERROR: File yang diunduh BUKAN file gambar (PNG/JPEG). Ikon masih default."
             exit 1
         fi
 
@@ -104,7 +117,8 @@ jobs:
       run: chmod 777 app/release-key.jks
       
     - name: Clean and Build APK and AAB (Release Signed)
-      run: ./gradlew clean assembleRelease bundleRelease --no-daemon 
+      # Menggunakan --stacktrace untuk mendapatkan detail penuh jika Gradle gagal
+      run: ./gradlew clean assembleRelease bundleRelease --no-daemon --stacktrace
       
     - name: Upload Dynamic Keystore Artifact
       uses: actions/upload-artifact@v4
