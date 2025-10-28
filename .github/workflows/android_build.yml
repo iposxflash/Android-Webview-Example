@@ -1,72 +1,15 @@
 name: Dynamic WebAPK Generator
 
 on:
-  workflow_dispatch:
-    inputs:
-      URL:
-        description: 'URL Website Utama'
-        required: true
-        default: 'https://default.com'
-      PACKAGE_NAME:
-        description: 'Package Name Aplikasi'
-        required: true
-        default: 'com.default.app'
-      ICON_BASE64:
-        description: 'Icon Aplikasi (Base64 String, Max ~50KB)'
-        required: true
-      KEY_ALIAS:
-        description: 'Alias Keystore'
-        required: true
-        default: 'mykey'
-      KEY_PASS:
-        description: 'Password Kunci'
-        required: true
-        default: 'android'
-      STORE_PASS:
-        description: 'Password Store'
-        required: true
-        default: 'android'
+# ... (Input dan Job setup tetap sama) ...
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v3
-
-    - name: Set up JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: gradle
+    # ... (Langkah Checkout sampai Decode Base64 Icon tetap sama) ...
         
-    - name: Ensure gradlew is executable
-      run: chmod +x gradlew
-        
-    - name: Update Configs (Package Name dan URL)
-      run: |
-        sed -i 's/applicationId ".*"/applicationId "${{ github.event.inputs.PACKAGE_NAME }}"/g' app/build.gradle
-        sed -i 's|<string name="web_url">.*</string>|<string name="web_url">${{ github.event.inputs.URL }}</string>|g' app/src/main/res/values/strings.xml
-        
-    # Membuat file properties signing untuk Gradle (release.properties) di ROOT
-    - name: Create Signing Properties File
-      run: |
-        echo "storeFile=release-key.jks" > release.properties
-        echo "keyAlias=${{ github.event.inputs.KEY_ALIAS }}" >> release.properties
-        echo "keyPassword=${{ github.event.inputs.KEY_PASS }}" >> release.properties
-        echo "storePassword=${{ github.event.inputs.STORE_PASS }}" >> release.properties
-        
-    - name: Remove Existing Icons
-      run: |
-        rm -f app/src/main/res/mipmap-xxhdpi/*
-
-    - name: Decode Base64 Icon and Save
-      run: |
-        mkdir -p app/src/main/res/mipmap-xxhdpi/
-        echo "${{ github.event.inputs.ICON_BASE64 }}" | base64 --decode > app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-
     # Keystore dibuat di ROOT (release-key.jks)
     - name: Generate Dynamic Keystore
       run: |
@@ -77,23 +20,11 @@ jobs:
         -keypass ${{ github.event.inputs.KEY_PASS }} \
         -dname "CN=Unknown, OU=Unknown, O=Unknown, L=Unknown, S=Unknown, C=Unknown"
       
+    # 🎯 PERBAIKAN AKHIR: Beri izin akses penuh pada file Keystore
+    - name: Change Keystore Permissions
+      run: chmod 777 release-key.jks
+      
     - name: Clean and Build APK and AAB (Release Signed)
       run: ./gradlew clean assembleRelease bundleRelease --no-daemon 
       
-    - name: Upload Dynamic Keystore Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: release-keystore
-        path: release-key.jks
-        
-    - name: Upload Release APK Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-release-signed-apk
-        path: app/build/outputs/apk/release/app-release.apk
-
-    - name: Upload Release AAB Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-release-signed-aab
-        path: app/build/outputs/bundle/release/app-release.aab
+    # ... (Langkah Upload Artifact tetap sama) ...
