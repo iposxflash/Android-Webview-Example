@@ -11,7 +11,7 @@ on:
         description: 'Package Name Aplikasi'
         required: true
         default: 'com.default.app'
-      APP_NAME: # 🎯 INPUT BARU: Nama Aplikasi
+      APP_NAME: 
         description: 'Nama Aplikasi (Muncul di layar)'
         required: true
         default: 'My New App'
@@ -51,16 +51,16 @@ jobs:
         
     - name: Update Configs (Package Name, URL, dan App Name)
       run: |
-        # 1. Update Package Name di app/build.gradle (Menggunakan sed yang paling aman)
+        # 1. Update Package Name (Berhasil)
         sed -i "s/applicationId \".*\"/applicationId \"${{ github.event.inputs.PACKAGE_NAME }}\"/g" app/build.gradle
         
-        # 2. Update URL di app/src/main/res/values/strings.xml
-        sed -i "s|<string name=\"web_url\">.*</string>|<string name=\"web_url\">${{ github.event.inputs.URL }}</string>|g" app/src/main/res/values/strings.xml
+        # 2. Update URL (Perbaikan: Menggunakan pembatas ; untuk menghindari konflik dengan URL)
+        # Ini akan mengganti nilai di antara tag <string name="web_url">...</string>
+        sed -i "s;<string name=\"web_url\">.*</string>;<string name=\"web_url\">${{ github.event.inputs.URL }}</string>;g" app/src/main/res/values/strings.xml
         
-        # 3. Update App Name di app/src/main/res/values/strings.xml (🎯 BARU)
+        # 3. Update App Name (Berhasil)
         sed -i "s|<string name=\"app_name\">.*</string>|<string name=\"app_name\">${{ github.event.inputs.APP_NAME }}</string>|g" app/src/main/res/values/strings.xml
         
-    # Membuat file properties signing untuk Gradle (release.properties) di ROOT
     - name: Create Signing Properties File
       run: |
         echo "storeFile=release-key.jks" > release.properties
@@ -77,9 +77,9 @@ jobs:
       run: |
         ICON_DIR="app/src/main/res/mipmap-xxhdpi/"
         mkdir -p $ICON_DIR
-        curl -L "${{ github.event.inputs.ICON_URL }}" -o $ICON_DIR/ic_launcher.png
+        # PERBAIKAN: Tambahkan -f (fail fast) untuk debugging curl
+        curl -f -L "${{ github.event.inputs.ICON_URL }}" -o $ICON_DIR/ic_launcher.png
 
-    # Keystore dibuat di dalam FOLDER 'app/'
     - name: Generate Dynamic Keystore
       run: |
         keytool -genkey -v -keystore app/release-key.jks \
@@ -89,14 +89,12 @@ jobs:
         -keypass ${{ github.event.inputs.KEY_PASS }} \
         -dname "CN=Dynamic Key, OU=Webview, O=PWA, L=Jakarta, S=ID, C=ID"
       
-    # Memberi izin akses penuh pada file Keystore di FOLDER 'app/'
     - name: Change Keystore Permissions
       run: chmod 777 app/release-key.jks
       
     - name: Clean and Build APK and AAB (Release Signed)
       run: ./gradlew clean assembleRelease bundleRelease --no-daemon 
       
-    # Upload Keystore dari lokasi baru (app/)
     - name: Upload Dynamic Keystore Artifact
       uses: actions/upload-artifact@v4
       with:
