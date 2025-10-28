@@ -50,7 +50,7 @@ jobs:
         sed -i 's/applicationId ".*"/applicationId "${{ github.event.inputs.PACKAGE_NAME }}"/g' app/build.gradle
         sed -i 's|<string name="web_url">.*</string>|<string name="web_url">${{ github.event.inputs.URL }}</string>|g' app/src/main/res/values/strings.xml
         
-    # 🎯 PERBAIKAN: Membuat file properties signing untuk Gradle (release.properties)
+    # Membuat file properties signing untuk Gradle (release.properties) di ROOT
     - name: Create Signing Properties File
       run: |
         echo "storeFile=release-key.jks" > release.properties
@@ -80,7 +80,6 @@ jobs:
     - name: Clean and Build APK and AAB (Release Signed)
       run: ./gradlew clean assembleRelease bundleRelease --no-daemon 
       
-    # Upload Keystore dari ROOT
     - name: Upload Dynamic Keystore Artifact
       uses: actions/upload-artifact@v4
       with:
