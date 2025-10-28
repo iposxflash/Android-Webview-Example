@@ -70,21 +70,20 @@ jobs:
         echo "keyPassword=${{ github.event.inputs.KEY_PASS }}" >> release.properties
         echo "storePassword=${{ github.event.inputs.STORE_PASS }}" >> release.properties
         
-    - name: Remove Existing Icons
+    - name: Remove Existing Icons and Junk Files
       run: |
-        # 🎯 PERBAIKAN KRITIS: Bersihkan file PNG dan WEBP di SEMUA folder mipmap untuk menghindari "Duplicate Resources"
-        echo "Starting aggressive cleanup of all ic_launcher files in all mipmap folders..."
+        # 🎯 PERBAIKAN ULTIMATE: Hapus SEMUA ISI folder mipmap untuk menghilangkan file sampah ("1", "Tempat icon")
+        echo "Starting ultimate cleanup of all files inside mipmap folders..."
         
-        # Hapus file .png dan .webp di semua folder mipmap-* (e.g., hdpi, mdpi, xxhdpi)
-        rm -f app/src/main/res/mipmap-*/ic_launcher.png
-        rm -f app/src/main/res/mipmap-*/ic_launcher_round.png
-        rm -f app/src/main/res/mipmap-*/ic_launcher.webp
-        rm -f app/src/main/res/mipmap-*/ic_launcher_round.webp
+        # Perintah rm -rf <folder>/* menghapus semua isi (file dan sub-folder), TAPI mempertahankan folder induknya.
+        rm -rf app/src/main/res/mipmap-mdpi/*
+        rm -rf app/src/main/res/mipmap-hdpi/*
+        rm -rf app/src/main/res/mipmap-xhdpi/*
+        rm -rf app/src/main/res/mipmap-xxhdpi/*
+        rm -rf app/src/main/res/mipmap-xxxhdpi/*
+        rm -rf app/src/main/res/mipmap-anydpi-v26/*
         
-        # Hapus juga file di folder mipmap-anydpi-v26
-        rm -f app/src/main/res/mipmap-anydpi-v26/*
-        
-        echo "Cleanup complete."
+        echo "Ultimate cleanup complete."
 
     - name: Download Icon from URL and Save
       run: |
