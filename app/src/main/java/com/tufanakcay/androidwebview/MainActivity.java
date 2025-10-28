@@ -4,6 +4,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
 import android.webkit.WebView;
+import android.webkit.WebViewClient; // 🎯 IMPORT BARU
 
 public class MainActivity extends AppCompatActivity {
 
@@ -21,18 +22,23 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void init() {
-
         webView = findViewById(R.id.webView);
     }
 
     private void viewUrl() {
 
+        // 1. Ambil URL Dinamis dari strings.xml
+        String dynamicUrl = getString(R.string.web_url); 
+
+        // 2. Pengaturan WebView
         webView.getSettings().setJavaScriptEnabled(true);
         
-        // 🎯 PERBAIKAN KRITIS: Muat URL dari strings.xml
-        String dynamicUrl = getString(R.string.web_url); 
-        
-        // Gunakan URL yang dimuat dari strings.xml, yang diubah oleh GitHub Actions
+        // 🎯 PERBAIKAN KRITIS: Set WebViewClient
+        // Ini memastikan bahwa setiap klik link di dalam WebView
+        // akan dimuat di WebView itu sendiri, BUKAN di Chrome.
+        webView.setWebViewClient(new WebViewClient()); 
+
+        // 3. Muat URL
         webView.loadUrl(dynamicUrl);
     }
 
