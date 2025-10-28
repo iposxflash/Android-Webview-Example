@@ -11,8 +11,8 @@ on:
         description: 'Package Name Aplikasi'
         required: true
         default: 'com.default.app'
-      ICON_BASE64:
-        description: 'Icon Aplikasi (Base64 String, Max ~50KB)'
+      ICON_URL: # 🎯 PERUBAHAN KRITIS: Ganti Base64 dengan URL
+        description: 'URL Icon Aplikasi (PNG/JPG, Max 5MB)'
         required: true
       KEY_ALIAS:
         description: 'Alias Keystore'
@@ -62,10 +62,13 @@ jobs:
       run: |
         rm -f app/src/main/res/mipmap-xxhdpi/*
 
-    - name: Decode Base64 Icon and Save
+    # 🎯 PERUBAHAN: Langkah download ikon dari URL
+    - name: Download Icon from URL and Save
       run: |
-        mkdir -p app/src/main/res/mipmap-xxhdpi/
-        echo "${{ github.event.inputs.ICON_BASE64 }}" | base64 --decode > app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+        ICON_DIR="app/src/main/res/mipmap-xxhdpi/"
+        mkdir -p $ICON_DIR
+        # Mengunduh file dari URL ke nama yang sesuai (ic_launcher.png)
+        curl -L "${{ github.event.inputs.ICON_URL }}" -o $ICON_DIR/ic_launcher.png
 
     # Keystore dibuat di dalam FOLDER 'app/'
     - name: Generate Dynamic Keystore
