@@ -51,15 +51,18 @@ jobs:
         
     - name: Update Configs (Package Name, URL, dan App Name)
       run: |
-        # 1. Update Package Name (Berhasil)
+        # 🎯 Solusi Teraman: Simpan semua input URL ke variabel shell Bash
+        URL_INPUT="${{ github.event.inputs.URL }}"
+        ICON_URL_INPUT="${{ github.event.inputs.ICON_URL }}"
+        
+        # 1. Update Package Name
         sed -i "s/applicationId \".*\"/applicationId \"${{ github.event.inputs.PACKAGE_NAME }}\"/g" app/build.gradle
         
-        # 2. Update URL (Perbaikan: Menggunakan pembatas ; untuk menghindari konflik dengan URL)
-        # Ini akan mengganti nilai di antara tag <string name="web_url">...</string>
-        sed -i "s;<string name=\"web_url\">.*</string>;<string name=\"web_url\">${{ github.event.inputs.URL }}</string>;g" app/src/main/res/values/strings.xml
-        
-        # 3. Update App Name (Berhasil)
+        # 2. Update App Name
         sed -i "s|<string name=\"app_name\">.*</string>|<string name=\"app_name\">${{ github.event.inputs.APP_NAME }}</string>|g" app/src/main/res/values/strings.xml
+        
+        # 3. Update URL (Menggunakan delimiter @ dan variabel shell $URL_INPUT)
+        sed -i "s@<string name=\"web_url\">.*</string>@<string name=\"web_url\">$URL_INPUT</string>@g" app/src/main/res/values/strings.xml
         
     - name: Create Signing Properties File
       run: |
@@ -75,10 +78,21 @@ jobs:
     # Langkah download ikon dari URL
     - name: Download Icon from URL and Save
       run: |
+        # Menggunakan variabel shell yang disiapkan di langkah sebelumnya
+        ICON_URL_INPUT="${{ github.event.inputs.ICON_URL }}"
         ICON_DIR="app/src/main/res/mipmap-xxhdpi/"
         mkdir -p $ICON_DIR
-        # PERBAIKAN: Tambahkan -f (fail fast) untuk debugging curl
-        curl -f -L "${{ github.event.inputs.ICON_URL }}" -o $ICON_DIR/ic_launcher.png
+        
+        echo "Downloading icon from: $ICON_URL_INPUT" # Debugging
+        
+        # Menggunakan -L (follow redirect) dan -f (fail fast)
+        curl -f -L "$ICON_URL_INPUT" -o $ICON_DIR/ic_launcher.png
+        
+        # Opsi debug: Periksa ukuran file yang diunduh (Penting untuk Ikon)
+        if [ ! -s $ICON_DIR/ic_launcher.png ]; then
+            echo "ERROR: File icon tidak diunduh atau ukurannya 0 byte. Ikon masih default."
+            exit 1
+        fi
 
     - name: Generate Dynamic Keystore
       run: |
