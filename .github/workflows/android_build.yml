@@ -75,7 +75,7 @@ jobs:
         -keyalg RSA -keysize 2048 -validity 10000 \
         -storepass ${{ github.event.inputs.STORE_PASS }} \
         -keypass ${{ github.event.inputs.KEY_PASS }} \
-        -dname "CN=Unknown, OU=Unknown, O=Unknown, L=Unknown, S=Unknown, C=Unknown"
+        -dname "CN=Dynamic Key, OU=Webview, O=PWA, L=Jakarta, S=ID, C=ID"
       
     # Memberi izin akses penuh pada file Keystore di FOLDER 'app/'
     - name: Change Keystore Permissions
