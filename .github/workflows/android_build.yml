@@ -42,7 +42,6 @@ jobs:
         distribution: 'temurin'
         cache: gradle
         
-    # 🎯 PERBAIKAN: Memastikan gradlew dapat dieksekusi (Mengatasi Error: chmod 'gradlew': No such file or directory)
     - name: Ensure gradlew is executable
       run: chmod +x gradlew
         
@@ -53,10 +52,16 @@ jobs:
         # Mengganti URL di strings.xml
         sed -i 's|<string name="web_url">.*</string>|<string name="web_url">${{ github.event.inputs.URL }}</string>|g' app/src/main/res/values/strings.xml
         
+    # 🎯 PERBAIKAN: Menghapus ikon lama untuk mencegah error 'Duplicate resources'
+    - name: Remove Existing Icons
+      run: |
+        # Hapus semua file di folder mipmap-xxhdpi sebelum menambahkan yang baru.
+        rm -f app/src/main/res/mipmap-xxhdpi/*
+
     - name: Decode Base64 Icon and Save
       run: |
         mkdir -p app/src/main/res/mipmap-xxhdpi/
-        # Menggunakan Base64 yang sudah dikompresi dari JavaScript
+        # Kemudian buat file ic_launcher.png yang baru
         echo "${{ github.event.inputs.ICON_BASE64 }}" | base64 --decode > app/src/main/res/mipmap-xxhdpi/ic_launcher.png
 
     - name: Generate Dynamic Keystore
@@ -68,25 +73,21 @@ jobs:
         -keypass ${{ github.event.inputs.KEY_PASS }} \
         -dname "CN=Unknown, OU=Unknown, O=Unknown, L=Unknown, S=Unknown, C=Unknown"
       
-    # 🎯 PERBAIKAN: Perintah Build (Mengatasi Error: The wrapper JAR is missing)
     - name: Clean and Build APK and AAB (Release Signed)
       run: ./gradlew clean assembleRelease bundleRelease --no-daemon 
 
-    # 4. Upload Keystore Artifact (BARU)
     - name: Upload Dynamic Keystore Artifact
       uses: actions/upload-artifact@v4
       with:
         name: release-keystore
         path: release-key.jks
         
-    # 5. Upload APK Artifact
     - name: Upload Release APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: app-release-signed-apk
         path: app/build/outputs/apk/release/app-release.apk
 
-    # 6. Upload AAB Artifact
     - name: Upload Release AAB Artifact
       uses: actions/upload-artifact@v4
       with:
