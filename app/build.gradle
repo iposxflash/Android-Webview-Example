@@ -1,4 +1,10 @@
-// 1. KODE KRITIS: MEMBACA FILE PROPERTI DI ROOT
+// 1. BLOK PLUGIN HARUS DI AWAL FILE, TIDAK BOLEH ADA KODE LAIN DI ATASNYA
+plugins {
+    id 'com.android.application'
+}
+
+// 2. KODE KRITIS: MEMBACA FILE PROPERTI DI ROOT
+// Pastikan kode ini berada LANGSUNG SETELAH blok plugins {}
 def releasePropsFile = rootProject.file('release.properties')
 def releaseProps = new Properties()
 if (releasePropsFile.exists()) {
@@ -11,10 +17,6 @@ if (releasePropsFile.exists()) {
     println "WARNING: release.properties file does not exist. Using default/empty signing configs."
 }
 // -----------------------------------------------------------
-
-plugins {
-    id 'com.android.application'
-}
 
 android {
     namespace 'com.tufanakcay.androidwebview' 
@@ -33,7 +35,7 @@ android {
     // Konfigurasi Signing Dinamis
     signingConfigs {
         release {
-            // 🎯 PERBAIKAN: Memaksa Gradle mencari file Keystore di ROOT Project
+            // Memaksa Gradle mencari file Keystore di ROOT Project
             storeFile rootProject.file(releaseProps.getProperty('storeFile') ?: "release-key.jks") 
             storePassword releaseProps.getProperty('storePassword') ?: "" 
             keyAlias releaseProps.getProperty('keyAlias') ?: "" 
