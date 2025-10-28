@@ -4,7 +4,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
 import android.webkit.WebView;
-import android.webkit.WebViewClient; // 🎯 IMPORT BARU
+import android.webkit.WebViewClient; // Penting untuk mencegah redirect ke Chrome
 
 public class MainActivity extends AppCompatActivity {
 
@@ -17,8 +17,6 @@ public class MainActivity extends AppCompatActivity {
 
         init();
         viewUrl();
-        // viewHtml();
-
     }
 
     private void init() {
@@ -27,25 +25,14 @@ public class MainActivity extends AppCompatActivity {
 
     private void viewUrl() {
 
-        // 1. Ambil URL Dinamis dari strings.xml
+        // 🎯 KRITIS: Muat URL dari strings.xml yang telah diubah YML
         String dynamicUrl = getString(R.string.web_url); 
 
-        // 2. Pengaturan WebView
         webView.getSettings().setJavaScriptEnabled(true);
         
-        // 🎯 PERBAIKAN KRITIS: Set WebViewClient
-        // Ini memastikan bahwa setiap klik link di dalam WebView
-        // akan dimuat di WebView itu sendiri, BUKAN di Chrome.
+        // Memastikan link tetap di dalam WebView
         webView.setWebViewClient(new WebViewClient()); 
 
-        // 3. Muat URL
         webView.loadUrl(dynamicUrl);
     }
-
-    private void viewHtml() {
-
-        String htmlCode = "<html><head><title>Webview HTML Example</title></head><body><h1>HTML EXAMPLE</h1></body></html>";
-        webView.loadData(htmlCode, "text/html", "UTF-8");
-    }
-
 }
