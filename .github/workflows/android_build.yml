@@ -11,7 +11,7 @@ on:
         description: 'Package Name Aplikasi'
         required: true
         default: 'com.default.app'
-      ICON_URL: # 🎯 PERUBAHAN KRITIS: Ganti Base64 dengan URL
+      ICON_URL: 
         description: 'URL Icon Aplikasi (PNG/JPG, Max 5MB)'
         required: true
       KEY_ALIAS:
@@ -47,8 +47,13 @@ jobs:
         
     - name: Update Configs (Package Name dan URL)
       run: |
-        sed -i 's/applicationId ".*"/applicationId "${{ github.event.inputs.PACKAGE_NAME }}"/g' app/build.gradle
-        sed -i 's|<string name="web_url">.*</string>|<string name="web_url">${{ github.event.inputs.URL }}</string>|g' app/src/main/res/values/strings.xml
+        # 1. Update Package Name di app/build.gradle
+        # Menggunakan sed yang ketat untuk mengganti applicationId
+        sed -i "s/^\(applicationId \s*\).*/\1\"${{ github.event.inputs.PACKAGE_NAME }}\"/g" app/build.gradle
+        
+        # 2. Update URL di app/src/main/res/values/strings.xml
+        # Mengganti placeholder web_url
+        sed -i "s|<string name=\"web_url\">.*</string>|<string name=\"web_url\">${{ github.event.inputs.URL }}</string>|g" app/src/main/res/values/strings.xml
         
     # Membuat file properties signing untuk Gradle (release.properties) di ROOT
     - name: Create Signing Properties File
@@ -62,7 +67,7 @@ jobs:
       run: |
         rm -f app/src/main/res/mipmap-xxhdpi/*
 
-    # 🎯 PERUBAHAN: Langkah download ikon dari URL
+    # Langkah download ikon dari URL
     - name: Download Icon from URL and Save
       run: |
         ICON_DIR="app/src/main/res/mipmap-xxhdpi/"
