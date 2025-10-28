@@ -1,29 +1,75 @@
 name: Dynamic WebAPK Generator
-# ... (Blok input tetap sama) ...
+
+on:
+  workflow_dispatch:
+    inputs:
+      URL:
+        description: 'URL Website Utama'
+        required: true
+        default: 'https://default.com'
+      PACKAGE_NAME:
+        description: 'Package Name Aplikasi'
+        required: true
+        default: 'com.default.app'
+      APP_NAME: 
+        description: 'Nama Aplikasi (Muncul di layar)'
+        required: true
+        default: 'My New App'
+      ICON_URL: 
+        description: 'URL Icon Aplikasi (PNG/JPG, Max 5MB)'
+        required: true
+      KEY_ALIAS:
+        description: 'Alias Keystore'
+        required: true
+        default: 'mykey'
+      KEY_PASS:
+        description: 'Password Kunci'
+        required: true
+        default: 'android'
+      STORE_PASS:
+        description: 'Password Store'
+        required: true
+        default: 'android'
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    # ... (Langkah Checkout dan Setup JDK) ...
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+        
+    - name: Ensure gradlew is executable
+      run: chmod +x gradlew
         
     - name: Update Configs (Package Name, URL, dan App Name)
       run: |
-        # 🎯 PERBAIKAN: Menggunakan tanda kutip tunggal ('') untuk variabel Bash agar aman
-        URL_INPUT='${{ github.event.inputs.URL }}'
+        # Menggunakan variabel shell dan meng-escape karakter khusus untuk SED
+        URL_INPUT=$(echo "${{ github.event.inputs.URL }}" | sed 's/[\/&]/\\&/g')
         
-        # 1. Update Package Name (Ini sudah berhasil, pertahankan)
+        # 1. Update Package Name (Ini sudah berhasil)
         sed -i "s/applicationId \".*\"/applicationId \"${{ github.event.inputs.PACKAGE_NAME }}\"/g" app/build.gradle
         
-        # 2. Update App Name (Ini sudah berhasil, pertahankan)
+        # 2. Update App Name (Ini sudah berhasil)
         sed -i "s|<string name=\"app_name\">.*</string>|<string name=\"app_name\">${{ github.event.inputs.APP_NAME }}</string>|g" app/src/main/res/values/strings.xml
         
-        # 3. Update URL (Menggunakan delimiter @ dan variabel shell $URL_INPUT)
-        # PENTING: $URL_INPUT diapit TANDA KUTIP GANDA di dalam sed
-        sed -i "s@<string name=\"web_url\">.*</string>@<string name=\"web_url\">\"$URL_INPUT\"</string>@g" app/src/main/res/values/strings.xml
+        # 3. Update URL (🎯 PERBAIKAN FINAL: Menggunakan variabel yang sudah di-escape)
+        # Delimiter ; dan variabel yang sudah di-escape ($URL_INPUT) seharusnya menyelesaikan masalah.
+        sed -i "s;<string name=\"web_url\">.*</string>;<string name=\"web_url\">$URL_INPUT</string>;g" app/src/main/res/values/strings.xml
         
-    # ... (Langkah Signing Properties) ...
+    - name: Create Signing Properties File
+      run: |
+        echo "storeFile=release-key.jks" > release.properties
+        echo "keyAlias=${{ github.event.inputs.KEY_ALIAS }}" >> release.properties
+        echo "keyPassword=${{ github.event.inputs.KEY_PASS }}" >> release.properties
+        echo "storePassword=${{ github.event.inputs.STORE_PASS }}" >> release.properties
         
     - name: Remove Existing Icons
       run: |
@@ -31,19 +77,49 @@ jobs:
 
     - name: Download Icon from URL and Save
       run: |
-        # 🎯 PERBAIKAN: Gunakan tanda kutip tunggal untuk variabel Bash ICON_URL_INPUT
-        ICON_URL_INPUT='${{ github.event.inputs.ICON_URL }}' 
+        ICON_URL_INPUT="${{ github.event.inputs.ICON_URL }}" 
         ICON_DIR="app/src/main/res/mipmap-xxhdpi/"
         mkdir -p $ICON_DIR
         
-        echo "Downloading icon from: $ICON_URL_INPUT"
+        echo "Downloading icon from: $ICON_URL_INPUT" # Debugging
         
-        # Curl harus menggunakan variabel yang diapit tanda kutip ganda untuk menangani karakter khusus
+        # Curl harus berhasil karena URL Ikon Anda valid
         curl -f -L "$ICON_URL_INPUT" -o $ICON_DIR/ic_launcher.png
         
         if [ ! -s $ICON_DIR/ic_launcher.png ]; then
             echo "ERROR: File icon tidak diunduh atau ukurannya 0 byte. Ikon masih default."
             exit 1
         fi
+
+    - name: Generate Dynamic Keystore
+      run: |
+        keytool -genkey -v -keystore app/release-key.jks \
+        -alias ${{ github.event.inputs.KEY_ALIAS }} \
+        -keyalg RSA -keysize 2048 -validity 10000 \
+        -storepass ${{ github.event.inputs.STORE_PASS }} \
+        -keypass ${{ github.event.inputs.KEY_PASS }} \
+        -dname "CN=Dynamic Key, OU=Webview, O=PWA, L=Jakarta, S=ID, C=ID"
+      
+    - name: Change Keystore Permissions
+      run: chmod 777 app/release-key.jks
+      
+    - name: Clean and Build APK and AAB (Release Signed)
+      run: ./gradlew clean assembleRelease bundleRelease --no-daemon 
+      
+    - name: Upload Dynamic Keystore Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-keystore
+        path: app/release-key.jks
         
-    # ... (Langkah Keystore dan Build selanjutnya tetap sama) ...
+    - name: Upload Release APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-signed-apk
+        path: app/build/outputs/apk/release/app-release.apk
+
+    - name: Upload Release AAB Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-signed-aab
+        path: app/build/outputs/bundle/release/app-release.aab
