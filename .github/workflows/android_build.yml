@@ -47,9 +47,7 @@ jobs:
         
     - name: Update Configs (Package Name dan URL)
       run: |
-        # Mengganti Application ID di build.gradle
         sed -i 's/applicationId ".*"/applicationId "${{ github.event.inputs.PACKAGE_NAME }}"/g' app/build.gradle
-        # Mengganti URL di strings.xml
         sed -i 's|<string name="web_url">.*</string>|<string name="web_url">${{ github.event.inputs.URL }}</string>|g' app/src/main/res/values/strings.xml
         
     # 🎯 PERBAIKAN: Membuat file properties signing untuk Gradle (release.properties)
@@ -62,7 +60,6 @@ jobs:
         
     - name: Remove Existing Icons
       run: |
-        # Mengatasi error Duplicate Resources
         rm -f app/src/main/res/mipmap-xxhdpi/*
 
     - name: Decode Base64 Icon and Save
