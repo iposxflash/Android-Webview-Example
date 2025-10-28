@@ -1,3 +1,17 @@
+// --- START PERBAIKAN KRITIS: MEMBACA FILE PROPERTI DI ROOT ---
+def releasePropsFile = rootProject.file('release.properties')
+def releaseProps = new Properties()
+if (releasePropsFile.exists()) {
+    try {
+        releaseProps.load(new FileInputStream(releasePropsFile))
+    } catch (FileNotFoundException e) {
+        println "WARNING: release.properties file not found: " + e.getMessage()
+    }
+} else {
+    println "WARNING: release.properties file does not exist. Using default/empty signing configs."
+}
+// --- END PERBAIKAN KRITIS ---
+
 plugins {
     id 'com.android.application'
 }
@@ -21,13 +35,13 @@ android {
     // --- START PERBAIKAN: Konfigurasi Signing Dinamis ---
     signingConfigs {
         release {
-            // File Keystore yang dibuat secara dinamis oleh 'keytool' di GitHub Actions
-            storeFile file("release-key.jks") 
+            // Mengambil path file dari properti
+            storeFile file(releaseProps.getProperty('storeFile') ?: "release-key.jks") 
             
-            // Mengambil password dari Environment Variables yang disetel oleh input YML
-            storePassword System.getenv("STORE_PASS") 
-            keyAlias System.getenv("KEY_ALIAS")
-            keyPassword System.getenv("KEY_PASS")
+            // Mengambil kredensial dari properti, jika tidak ada, gunakan string kosong
+            storePassword releaseProps.getProperty('storePassword') ?: "" 
+            keyAlias releaseProps.getProperty('keyAlias') ?: "" 
+            keyPassword releaseProps.getProperty('keyPassword') ?: ""
         }
     }
     // --- END PERBAIKAN ---
@@ -37,7 +51,7 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             
-            // --- PERBAIKAN: Terapkan Konfigurasi Signing ---
+            // --- Terapkan Konfigurasi Signing ---
             signingConfig signingConfigs.release
         }
     }
