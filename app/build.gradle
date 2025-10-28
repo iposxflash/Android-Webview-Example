@@ -17,6 +17,12 @@ if (releasePropsFile.exists()) {
 }
 // -----------------------------------------------------------
 
+defaultConfig {
+        // Placeholder Package Name yang akan diganti oleh sed di YML
+        applicationId "com.tufanakcay.androidwebview" // atau "com.default.app"
+        // ...
+    }
+
 android {
     namespace 'com.tufanakcay.androidwebview' 
     compileSdk 33
