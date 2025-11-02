@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">Android Webview Example</string>
     
-    <string name="web_url">https://default.com</string>
+    <string name="web_url">https://builder.ojgrup.com</string>
 </resources>
