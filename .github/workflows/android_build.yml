@@ -55,8 +55,20 @@ jobs:
 
     # ... lanjutkan ke Ensure gradlew is executable
         
+    # ... setelah Set up JDK 17
+
+    - name: Setup Android SDK Environment 🛠️
+      uses: android-actions/setup-android@v3 
+      # Action ini akan memastikan SDK root/path diatur dengan benar
+
+    - name: Install Android SDK Components (API 34) 🚀
+      run: |
+        # Setelah setup di atas, sdkmanager seharusnya sudah ditemukan
+        yes | sdkmanager "platforms;android-34" "build-tools;34.0.0"
+
     - name: Ensure gradlew is executable
       run: chmod +x gradlew
+# ...
         
     - name: Update Configs (Package Name, URL, dan App Name)
       run: |
