@@ -45,6 +45,15 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
         cache: gradle
+
+      # ... sdk 34
+    
+    - name: Install Android SDK Components (API 34) 🚀
+      run: |
+        # Menginstal platform dan build-tools untuk Android 14 (API 34)
+        sdkmanager "platforms;android-34" "build-tools;34.0.0" --licenses
+
+    # ... lanjutkan ke Ensure gradlew is executable
         
     - name: Ensure gradlew is executable
       run: chmod +x gradlew
