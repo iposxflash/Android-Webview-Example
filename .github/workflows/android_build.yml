@@ -39,6 +39,7 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v3
 
+    # 1. SETUP JAVA JDK 17
     - name: Set up JDK 17
       uses: actions/setup-java@v4
       with:
@@ -46,29 +47,19 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
-      # ... sdk 34
-    
-    - name: Install Android SDK Components (API 34) 🚀
-      run: |
-        # Menginstal platform dan build-tools untuk Android 14 (API 34)
-        sdkmanager "platforms;android-34" "build-tools;34.0.0" --licenses
-
-    # ... lanjutkan ke Ensure gradlew is executable
-        
-    # ... setelah Set up JDK 17
-
+    # 2. SETUP ANDROID PATH/ENVIRONMENT (HARUS DI ATAS SDKMANAGER)
+    # Action ini mengatur path agar sdkmanager dapat ditemukan.
     - name: Setup Android SDK Environment 🛠️
       uses: android-actions/setup-android@v3 
-      # Action ini akan memastikan SDK root/path diatur dengan benar
 
+    # 3. INSTALASI KOMPONEN SDK 34 (Setelah environment disiapkan)
     - name: Install Android SDK Components (API 34) 🚀
       run: |
-        # Setelah setup di atas, sdkmanager seharusnya sudah ditemukan
-        yes | sdkmanager "platforms;android-34" "build-tools;34.0.0"
+        # Menggunakan 'yes |' untuk menerima lisensi secara otomatis
+        yes | sdkmanager "platforms;android-34" "build-tools;34.0.0" 
 
     - name: Ensure gradlew is executable
       run: chmod +x gradlew
-# ...
         
     - name: Update Configs (Package Name, URL, dan App Name)
       run: |
@@ -93,23 +84,19 @@ jobs:
         
     - name: Remove Existing Icons and Junk Files
       run: |
-        # 🎯 PERBAIKAN ULTIMATE: Hapus SEMUA ISI folder mipmap untuk menghilangkan file sampah ("1", "Tempat icon")
         echo "Starting ultimate cleanup of all files inside mipmap folders..."
-        
-        # Perintah rm -rf <folder>/* menghapus semua isi (file dan sub-folder), TAPI mempertahankan folder induknya.
         rm -rf app/src/main/res/mipmap-mdpi/*
         rm -rf app/src/main/res/mipmap-hdpi/*
         rm -rf app/src/main/res/mipmap-xhdpi/*
         rm -rf app/src/main/res/mipmap-xxhdpi/*
         rm -rf app/src/main/res/mipmap-xxxhdpi/*
         rm -rf app/src/main/res/mipmap-anydpi-v26/*
-        
         echo "Ultimate cleanup complete."
 
     - name: Download Icon from URL and Save
       run: |
         ICON_URL_INPUT="${{ github.event.inputs.ICON_URL }}" 
-        ICON_DIR="app/src/main/res/mipmap-xxhdpi/" # Targetkan folder resolusi tinggi
+        ICON_DIR="app/src/main/res/mipmap-xxhdpi/" 
         mkdir -p $ICON_DIR
         
         echo "Downloading icon from: $ICON_URL_INPUT"
@@ -142,13 +129,13 @@ jobs:
         -storepass ${{ github.event.inputs.STORE_PASS }} \
         -keypass ${{ github.event.inputs.KEY_PASS }} \
         -dname "CN=Dynamic Key, OU=Webview, O=PWA, L=Jakarta, S=ID, C=ID"
-      
+        
     - name: Change Keystore Permissions
       run: chmod 777 app/release-key.jks
-      
+        
     - name: Clean and Build APK and AAB (Release Signed)
       run: ./gradlew clean assembleRelease bundleRelease --no-daemon --stacktrace
-      
+        
     - name: Upload Dynamic Keystore Artifact
       uses: actions/upload-artifact@v4
       with:
