@@ -1,12 +1,11 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 plugins {
-    // 🎯 PERBAIKAN: Definisikan plugin dan versinya di sini
-    id 'com.android.application' version '7.4.2' apply false 
-    id 'com.android.library' version '7.4.2' apply false
+    // Versi AGP 8.2.2 memastikan kompatibilitas dengan SDK 34 dan JDK 17
+    id 'com.android.application' version '8.2.2' apply false 
+    id 'com.android.library' version '8.2.2' apply false
 }
 
-// Catatan: Baris di bawah ini mungkin sudah ada atau mungkin perlu ditambahkan 
-// tergantung versi Gradle Anda, tetapi blok 'plugins' di atas adalah yang terpenting.
+// Opsional: Blok ini biasanya digunakan untuk kompatibilitas dan tidak ada masalah jika dipertahankan.
 /*
 allprojects {
     repositories {
