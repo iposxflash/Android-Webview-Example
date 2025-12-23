@@ -2,6 +2,7 @@ package com.tufanakcay.androidwebview;
 
 import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
+import android.webkit.JavascriptInterface; // Tambahan
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
@@ -9,6 +10,10 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.os.Build;
+import android.content.Context; // Tambahan
+import android.print.PrintAttributes; // Tambahan
+import android.print.PrintDocumentAdapter; // Tambahan
+import android.print.PrintManager; // Tambahan
 
 public class MainActivity extends AppCompatActivity {
 
@@ -51,6 +56,15 @@ public class MainActivity extends AppCompatActivity {
         // 5. User Agent agar dikenali sebagai browser standar
         webSettings.setUserAgentString("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36");
 
+        // --- TAMBAHAN UNTUK FITUR CETAK ---
+        webView.addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public void performPrint() {
+                runOnUiThread(() -> createWebPrintJob(webView));
+            }
+        }, "AndroidPrint");
+        // ----------------------------------
+
         // 6. WAJIB: Agar Alert/Dialog/Tombol popup berfungsi
         webView.setWebChromeClient(new WebChromeClient());
 
@@ -58,6 +72,18 @@ public class MainActivity extends AppCompatActivity {
         webView.setWebViewClient(new CustomWebViewClient()); 
 
         webView.loadUrl(dynamicUrl);
+    }
+
+    // --- METHOD BARU UNTUK PROSES CETAK ---
+    private void createWebPrintJob(WebView webView) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            PrintManager printManager = (PrintManager) this.getSystemService(Context.PRINT_SERVICE);
+            String jobName = getString(R.string.app_name) + " Document";
+            PrintDocumentAdapter printAdapter = webView.createPrintDocumentAdapter(jobName);
+            if (printManager != null) {
+                printManager.print(jobName, printAdapter, new PrintAttributes.Builder().build());
+            }
+        }
     }
     
     @Override
@@ -72,13 +98,14 @@ public class MainActivity extends AppCompatActivity {
     private class CustomWebViewClient extends WebViewClient {
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-            // Biarkan WebView memproses link di dalam aplikasi
             return false; 
         }
 
         @Override
         public void onPageFinished(WebView view, String url) {
              super.onPageFinished(view, url);
+             // INJEKSI SCRIPT: Menghubungkan window.print() di web ke fungsi Android tanpa merubah kode web
+             view.loadUrl("javascript:window.print = function() { AndroidPrint.performPrint(); }");
         }
 
         @Override
