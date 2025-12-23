@@ -2,7 +2,7 @@ package com.tufanakcay.androidwebview;
 
 import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
-import android.webkit.WebChromeClient; // Tambahan penting
+import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
@@ -32,31 +32,29 @@ public class MainActivity extends AppCompatActivity {
 
         WebSettings webSettings = webView.getSettings();
 
-        // 1. Aktifkan JavaScript (Wajib)
+        // 1. Aktifkan JavaScript (Wajib untuk tombol web)
         webSettings.setJavaScriptEnabled(true);
         
-        // 2. Aktifkan Storage (Sangat penting untuk website modern/PWA)
+        // 2. Aktifkan DOM Storage (Penting agar web tidak macet)
         webSettings.setDomStorageEnabled(true); 
         webSettings.setDatabaseEnabled(true);
-        webSettings.setAppCacheEnabled(true); // Untuk performa loading
 
-        // 3. Izinkan akses file (Penting jika ada fitur download/upload di web)
+        // 3. Pengaturan Akses File
         webSettings.setAllowFileAccess(true);
         webSettings.setAllowContentAccess(true);
 
         // 4. Penanganan Keamanan HTTPS (Mixed Content)
-        // Agar tombol tidak blokir saat web memanggil script dari luar
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         }
 
-        // 5. User Agent (Opsional: Agar web mengenali sebagai browser mobile standar)
+        // 5. User Agent agar dikenali sebagai browser standar
         webSettings.setUserAgentString("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36");
 
-        // 6. WebChromeClient (WAJIB: Agar tombol Alert, Dialog, dan Pop-up berfungsi)
+        // 6. WAJIB: Agar Alert/Dialog/Tombol popup berfungsi
         webView.setWebChromeClient(new WebChromeClient());
 
-        // 7. WebViewClient Kustom
+        // 7. Menangani navigasi di dalam WebView
         webView.setWebViewClient(new CustomWebViewClient()); 
 
         webView.loadUrl(dynamicUrl);
@@ -72,20 +70,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private class CustomWebViewClient extends WebViewClient {
-        // Gunakan parameter WebResourceRequest untuk kompatibilitas versi baru
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-            // Biarkan WebView menangani navigasi internal secara otomatis
+            // Biarkan WebView memproses link di dalam aplikasi
             return false; 
         }
 
-        // Kompatibilitas untuk versi Android lama
-        @Override
-        public boolean shouldOverrideUrlLoading(WebView view, String url) {
-            view.loadUrl(url);
-            return true;
-        }
-        
         @Override
         public void onPageFinished(WebView view, String url) {
              super.onPageFinished(view, url);
