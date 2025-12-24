@@ -1,6 +1,7 @@
 package com.tufanakcay.androidwebview;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout; // Tambahan
 import android.os.Bundle;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
@@ -9,19 +10,25 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.webkit.DownloadListener; // Tambahan
-import android.content.Intent; // Tambahan
-import android.net.Uri; // Tambahan
+import android.webkit.DownloadListener;
+import android.webkit.URLUtil;
+import android.app.DownloadManager;
+import android.net.Uri;
 import android.os.Build;
+import android.os.Environment;
 import android.content.Context;
 import android.print.PrintAttributes;
 import android.print.PrintDocumentAdapter;
 import android.print.PrintManager;
-import android.widget.Toast; // Tambahan
+import android.widget.Toast;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import androidx.core.app.ActivityCompat;
 
 public class MainActivity extends AppCompatActivity {
 
     WebView webView;
+    SwipeRefreshLayout swipeRefresh; // Tambahan
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,37 +37,44 @@ public class MainActivity extends AppCompatActivity {
 
         init();
         viewUrl();
+        checkDownloadPermission();
     }
 
     private void init() {
         webView = findViewById(R.id.webView);
+        swipeRefresh = findViewById(R.id.swipeRefresh); // Inisialisasi
+
+        // Logika Swipe Refresh
+        swipeRefresh.setOnRefreshListener(() -> {
+            webView.reload(); // Memuat ulang halaman
+        });
+    }
+
+    private void checkDownloadPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+            }
+        }
     }
 
     private void viewUrl() {
         String dynamicUrl = getString(R.string.web_url); 
-
         WebSettings webSettings = webView.getSettings();
 
-        // 1. Aktifkan JavaScript
         webSettings.setJavaScriptEnabled(true);
-        
-        // 2. Aktifkan DOM Storage
         webSettings.setDomStorageEnabled(true); 
         webSettings.setDatabaseEnabled(true);
-
-        // 3. Pengaturan Akses File
         webSettings.setAllowFileAccess(true);
         webSettings.setAllowContentAccess(true);
 
-        // 4. Penanganan Keamanan HTTPS
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         }
 
-        // 5. User Agent
         webSettings.setUserAgentString("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36");
 
-        // FITUR CETAK
+        // Fitur Cetak
         webView.addJavascriptInterface(new Object() {
             @JavascriptInterface
             public void performPrint() {
@@ -68,25 +82,25 @@ public class MainActivity extends AppCompatActivity {
             }
         }, "AndroidPrint");
 
-        // --- TAMBAHAN UNTUK FITUR DOWNLOAD ---
-        webView.setDownloadListener(new DownloadListener() {
-            @Override
-            public void onDownloadStart(String url, String userAgent, String contentDisposition, String mimetype, long contentLength) {
-                // Mengalihkan download ke Browser bawaan HP (Chrome/Samsung Browser) agar lebih aman dan stabil
-                Intent i = new Intent(Intent.ACTION_VIEW);
-                i.setData(Uri.parse(url));
-                startActivity(i);
-                Toast.makeText(MainActivity.this, "Mengunduh file...", Toast.LENGTH_SHORT).show();
+        // Fitur Download Internal
+        webView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) -> {
+            DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
+            request.setMimeType(mimetype);
+            String fileName = URLUtil.guessFileName(url, contentDisposition, mimetype);
+            request.setTitle(fileName);
+            request.setDescription("Mengunduh file...");
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
+
+            DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+            if (dm != null) {
+                dm.enqueue(request);
+                Toast.makeText(getApplicationContext(), "Mengunduh: " + fileName, Toast.LENGTH_LONG).show();
             }
         });
-        // -------------------------------------
 
-        // 6. WebChromeClient
         webView.setWebChromeClient(new WebChromeClient());
-
-        // 7. WebViewClient
         webView.setWebViewClient(new CustomWebViewClient()); 
-
         webView.loadUrl(dynamicUrl);
     }
 
@@ -119,12 +133,15 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onPageFinished(WebView view, String url) {
              super.onPageFinished(view, url);
+             // Matikan loading animasi swipe refresh setelah halaman selesai dimuat
+             swipeRefresh.setRefreshing(false); 
              view.loadUrl("javascript:window.print = function() { AndroidPrint.performPrint(); }");
         }
 
         @Override
         public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
             if (request.isForMainFrame()) {
+                swipeRefresh.setRefreshing(false); // Matikan loading jika error
                 String failingUrl = request.getUrl().toString();
                 String htmlData = "<html><body style='display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; margin:0; background-color:#F5F5F5;'>"
                                 + "<div style='text-align:center; padding:20px;'>"
