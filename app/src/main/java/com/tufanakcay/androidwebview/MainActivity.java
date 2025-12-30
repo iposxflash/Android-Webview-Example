@@ -1,7 +1,7 @@
 package com.tufanakcay.androidwebview;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout; // Tambahan
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import android.os.Bundle;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
@@ -24,11 +24,13 @@ import android.widget.Toast;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import androidx.core.app.ActivityCompat;
+// IMPORT TAMBAHAN UNTUK WHATSAPP
+import android.content.Intent; 
 
 public class MainActivity extends AppCompatActivity {
 
     WebView webView;
-    SwipeRefreshLayout swipeRefresh; // Tambahan
+    SwipeRefreshLayout swipeRefresh;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,11 +44,10 @@ public class MainActivity extends AppCompatActivity {
 
     private void init() {
         webView = findViewById(R.id.webView);
-        swipeRefresh = findViewById(R.id.swipeRefresh); // Inisialisasi
+        swipeRefresh = findViewById(R.id.swipeRefresh);
 
-        // Logika Swipe Refresh
         swipeRefresh.setOnRefreshListener(() -> {
-            webView.reload(); // Memuat ulang halaman
+            webView.reload();
         });
     }
 
@@ -74,7 +75,6 @@ public class MainActivity extends AppCompatActivity {
 
         webSettings.setUserAgentString("Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36");
 
-        // Fitur Cetak
         webView.addJavascriptInterface(new Object() {
             @JavascriptInterface
             public void performPrint() {
@@ -82,7 +82,6 @@ public class MainActivity extends AppCompatActivity {
             }
         }, "AndroidPrint");
 
-        // Fitur Download Internal
         webView.setDownloadListener((url, userAgent, contentDisposition, mimetype, contentLength) -> {
             DownloadManager.Request request = new DownloadManager.Request(Uri.parse(url));
             request.setMimeType(mimetype);
@@ -127,13 +126,34 @@ public class MainActivity extends AppCompatActivity {
     private class CustomWebViewClient extends WebViewClient {
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-            return false; 
+            // AMBIL URL DARI REQUEST
+            String url = request.getUrl().toString();
+
+            // LOGIKA DETEKSI WHATSAPP
+            if (url.startsWith("whatsapp://") || url.contains("api.whatsapp.com") || url.contains("wa.me")) {
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                    startActivity(intent);
+                    return true; // Berhenti memuat di WebView, lempar ke WhatsApp
+                } catch (Exception e) {
+                    Toast.makeText(MainActivity.this, "WhatsApp tidak terinstall", Toast.LENGTH_SHORT).show();
+                    return true;
+                }
+            }
+            
+            // LOGIKA UNTUK TELEPON (OPSIONAL TAPI BERGUNA)
+            if (url.startsWith("tel:")) {
+                Intent intent = new Intent(Intent.ACTION_DIAL, Uri.parse(url));
+                startActivity(intent);
+                return true;
+            }
+
+            return false; // Tetap muat URL normal di WebView
         }
 
         @Override
         public void onPageFinished(WebView view, String url) {
              super.onPageFinished(view, url);
-             // Matikan loading animasi swipe refresh setelah halaman selesai dimuat
              swipeRefresh.setRefreshing(false); 
              view.loadUrl("javascript:window.print = function() { AndroidPrint.performPrint(); }");
         }
@@ -141,7 +161,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
             if (request.isForMainFrame()) {
-                swipeRefresh.setRefreshing(false); // Matikan loading jika error
+                swipeRefresh.setRefreshing(false);
                 String failingUrl = request.getUrl().toString();
                 String htmlData = "<html><body style='display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; margin:0; background-color:#F5F5F5;'>"
                                 + "<div style='text-align:center; padding:20px;'>"
