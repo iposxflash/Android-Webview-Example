@@ -55,7 +55,9 @@ public class MainActivity extends AppCompatActivity {
             webView.reload();
         });
 
-        // PERBAIKAN SCROLL: Matikan SwipeRefresh saat user men-scroll ke bawah
+        // --- PERBAIKAN SCROLL ---
+        // Logika: Jika WebView sedang di-scroll (bukan di posisi paling atas), 
+        // maka matikan SwipeRefresh agar tidak mengganggu gerakan jari (scroll chat).
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             webView.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
                 if (scrollY > 0) {
@@ -96,7 +98,7 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setAllowContentAccess(true);
         webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
         
-        // Tambahan agar scroll lebih smooth di beberapa perangkat
+        // Tambahan agar scroll tidak mentok-mentok (bounce) yang bikin macet
         webView.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
