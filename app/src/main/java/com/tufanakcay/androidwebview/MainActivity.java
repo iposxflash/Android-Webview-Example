@@ -12,6 +12,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.webkit.DownloadListener;
 import android.webkit.URLUtil;
+import android.webkit.ValueCallback;
 import android.app.DownloadManager;
 import android.net.Uri;
 import android.os.Build;
@@ -24,13 +25,17 @@ import android.widget.Toast;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import androidx.core.app.ActivityCompat;
-// IMPORT TAMBAHAN UNTUK WHATSAPP
+import androidx.core.content.ContextCompat;
 import android.content.Intent; 
 
 public class MainActivity extends AppCompatActivity {
 
     WebView webView;
     SwipeRefreshLayout swipeRefresh;
+    
+    // VARIABEL UNTUK UPLOAD GAMBAR
+    private ValueCallback<Uri[]> mUploadMessage;
+    private final static int FILECHOOSER_RESULTCODE = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
 
         init();
         viewUrl();
-        checkDownloadPermission();
+        checkPermissions(); // Gabungan izin download & kamera
     }
 
     private void init() {
@@ -51,10 +56,20 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void checkDownloadPermission() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+    private void checkPermissions() {
+        String[] permissions;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions = new String[]{Manifest.permission.CAMERA};
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            permissions = new String[]{Manifest.permission.CAMERA};
+        } else {
+            permissions = new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.CAMERA};
+        }
+
+        for (String perm : permissions) {
+            if (ContextCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, permissions, 1);
+                break;
             }
         }
     }
@@ -68,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setDatabaseEnabled(true);
         webSettings.setAllowFileAccess(true);
         webSettings.setAllowContentAccess(true);
+        webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
@@ -98,9 +114,47 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        webView.setWebChromeClient(new WebChromeClient());
+        // PERBAIKAN: MENANGANI FILE CHOOSER (KAMERA/GALERI)
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
+                if (mUploadMessage != null) {
+                    mUploadMessage.onReceiveValue(null);
+                }
+                mUploadMessage = filePathCallback;
+
+                Intent intent = fileChooserParams.createIntent();
+                try {
+                    startActivityForResult(intent, FILECHOOSER_RESULTCODE);
+                } catch (Exception e) {
+                    mUploadMessage = null;
+                    Toast.makeText(MainActivity.this, "Tidak dapat membuka pengelola file", Toast.LENGTH_LONG).show();
+                    return false;
+                }
+                return true;
+            }
+        });
+
         webView.setWebViewClient(new CustomWebViewClient()); 
         webView.loadUrl(dynamicUrl);
+    }
+
+    // MENANGANI HASIL DARI KAMERA/GALERI
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+        super.onActivityResult(requestCode, resultCode, intent);
+        if (requestCode == FILECHOOSER_RESULTCODE) {
+            if (mUploadMessage == null) return;
+            Uri[] results = null;
+            if (resultCode == RESULT_OK && intent != null) {
+                String dataString = intent.getDataString();
+                if (dataString != null) {
+                    results = new Uri[]{Uri.parse(dataString)};
+                }
+            }
+            mUploadMessage.onReceiveValue(results);
+            mUploadMessage = null;
+        }
     }
 
     private void createWebPrintJob(WebView webView) {
@@ -126,29 +180,26 @@ public class MainActivity extends AppCompatActivity {
     private class CustomWebViewClient extends WebViewClient {
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-            // AMBIL URL DARI REQUEST
             String url = request.getUrl().toString();
 
-            // LOGIKA DETEKSI WHATSAPP
             if (url.startsWith("whatsapp://") || url.contains("api.whatsapp.com") || url.contains("wa.me")) {
                 try {
                     Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
                     startActivity(intent);
-                    return true; // Berhenti memuat di WebView, lempar ke WhatsApp
+                    return true;
                 } catch (Exception e) {
                     Toast.makeText(MainActivity.this, "WhatsApp tidak terinstall", Toast.LENGTH_SHORT).show();
                     return true;
                 }
             }
             
-            // LOGIKA UNTUK TELEPON (OPSIONAL TAPI BERGUNA)
             if (url.startsWith("tel:")) {
                 Intent intent = new Intent(Intent.ACTION_DIAL, Uri.parse(url));
                 startActivity(intent);
                 return true;
             }
 
-            return false; // Tetap muat URL normal di WebView
+            return false;
         }
 
         @Override
