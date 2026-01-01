@@ -27,6 +27,7 @@ import android.content.pm.PackageManager;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import android.content.Intent; 
+import android.view.MotionEvent; // Tambahan import untuk deteksi sentuhan
 
 public class MainActivity extends AppCompatActivity {
 
@@ -55,9 +56,27 @@ public class MainActivity extends AppCompatActivity {
             webView.reload();
         });
 
-        // --- PERBAIKAN SCROLL ---
-        // Logika: Jika WebView sedang di-scroll (bukan di posisi paling atas), 
-        // maka matikan SwipeRefresh agar tidak mengganggu gerakan jari (scroll chat).
+        // --- PERBAIKAN SCROLL SUPER LANCAR ---
+        // Menangani masalah SwipeRefresh yang sering mengunci scroll pada elemen internal web (seperti Chat)
+        webView.setOnTouchListener((v, event) -> {
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    // Saat jari menyentuh layar, biarkan SwipeRefresh aktif jika posisi di paling atas
+                    if (webView.getScrollY() <= 0) {
+                        swipeRefresh.setEnabled(true);
+                    }
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    // Jika jari bergerak dan posisi web tidak di paling atas, matikan SwipeRefresh
+                    // Ini penting agar scroll chat tidak dianggap sebagai perintah "tarik untuk segarkan"
+                    if (webView.getScrollY() > 0) {
+                        swipeRefresh.setEnabled(false);
+                    }
+                    break;
+            }
+            return false;
+        });
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             webView.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
                 if (scrollY > 0) {
@@ -98,7 +117,7 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setAllowContentAccess(true);
         webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
         
-        // Tambahan agar scroll tidak mentok-mentok (bounce) yang bikin macet
+        // Mematikan efek bounce agar tidak mengunci scroll saat chat dibuka
         webView.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -130,7 +149,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // TETAP MENANGANI FILE CHOOSER (KAMERA/GALERI)
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
