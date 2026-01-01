@@ -54,6 +54,17 @@ public class MainActivity extends AppCompatActivity {
         swipeRefresh.setOnRefreshListener(() -> {
             webView.reload();
         });
+
+        // PERBAIKAN SCROLL: Matikan SwipeRefresh saat user men-scroll ke bawah
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            webView.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
+                if (scrollY > 0) {
+                    swipeRefresh.setEnabled(false);
+                } else {
+                    swipeRefresh.setEnabled(true);
+                }
+            });
+        }
     }
 
     private void checkPermissions() {
@@ -84,6 +95,9 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setAllowFileAccess(true);
         webSettings.setAllowContentAccess(true);
         webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
+        
+        // Tambahan agar scroll lebih smooth di beberapa perangkat
+        webView.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
@@ -114,7 +128,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // PERBAIKAN: MENANGANI FILE CHOOSER (KAMERA/GALERI)
+        // TETAP MENANGANI FILE CHOOSER (KAMERA/GALERI)
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, WebChromeClient.FileChooserParams fileChooserParams) {
@@ -139,7 +153,6 @@ public class MainActivity extends AppCompatActivity {
         webView.loadUrl(dynamicUrl);
     }
 
-    // MENANGANI HASIL DARI KAMERA/GALERI
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
         super.onActivityResult(requestCode, resultCode, intent);
