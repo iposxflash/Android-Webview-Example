@@ -38,7 +38,6 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            /* PERBAIKAN: windowSoftInputMode sangat penting untuk aplikasi Chat/Forum */
             android:windowSoftInputMode="adjustResize"
             android:configChanges="orientation|screenSize|keyboardHidden"> 
             
