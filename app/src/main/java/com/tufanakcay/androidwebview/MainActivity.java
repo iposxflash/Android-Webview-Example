@@ -27,14 +27,14 @@ import android.content.pm.PackageManager;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import android.content.Intent; 
-import android.view.MotionEvent; // Tambahan import untuk deteksi sentuhan
+import android.view.MotionEvent;
+import android.view.View; // Tambahan untuk View.LAYER_TYPE_HARDWARE
 
 public class MainActivity extends AppCompatActivity {
 
     WebView webView;
     SwipeRefreshLayout swipeRefresh;
     
-    // VARIABEL UNTUK UPLOAD GAMBAR
     private ValueCallback<Uri[]> mUploadMessage;
     private final static int FILECHOOSER_RESULTCODE = 1;
 
@@ -45,7 +45,7 @@ public class MainActivity extends AppCompatActivity {
 
         init();
         viewUrl();
-        checkPermissions(); // Gabungan izin download & kamera
+        checkPermissions();
     }
 
     private void init() {
@@ -56,36 +56,26 @@ public class MainActivity extends AppCompatActivity {
             webView.reload();
         });
 
-        // --- PERBAIKAN SCROLL SUPER LANCAR ---
-        // Menangani masalah SwipeRefresh yang sering mengunci scroll pada elemen internal web (seperti Chat)
+        // --- PERBAIKAN SCROLL: DETEKSI KONFLIK SWIPEREFRESH ---
+        // Kita menggunakan OnScrollChangeListener untuk memastikan SwipeRefresh 
+        // HANYA aktif jika posisi scroll benar-benar di paling atas (0).
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            webView.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
+                // Jika scrollY > 0, berarti kita sedang scroll ke bawah, matikan SwipeRefresh
+                swipeRefresh.setEnabled(scrollY <= 0);
+            });
+        }
+
+        // Penanganan tambahan untuk gestur sentuhan (Swipe vs Scroll Internal)
         webView.setOnTouchListener((v, event) -> {
-            switch (event.getAction()) {
-                case MotionEvent.ACTION_DOWN:
-                    // Saat jari menyentuh layar, biarkan SwipeRefresh aktif jika posisi di paling atas
-                    if (webView.getScrollY() <= 0) {
-                        swipeRefresh.setEnabled(true);
-                    }
-                    break;
-                case MotionEvent.ACTION_MOVE:
-                    // Jika jari bergerak dan posisi web tidak di paling atas, matikan SwipeRefresh
-                    // Ini penting agar scroll chat tidak dianggap sebagai perintah "tarik untuk segarkan"
-                    if (webView.getScrollY() > 0) {
-                        swipeRefresh.setEnabled(false);
-                    }
-                    break;
+            if (event.getAction() == MotionEvent.ACTION_MOVE) {
+                // Jika webview tidak di posisi 0, jangan biarkan SwipeRefresh mengambil alih
+                if (webView.getScrollY() > 0) {
+                    swipeRefresh.setEnabled(false);
+                }
             }
             return false;
         });
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            webView.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
-                if (scrollY > 0) {
-                    swipeRefresh.setEnabled(false);
-                } else {
-                    swipeRefresh.setEnabled(true);
-                }
-            });
-        }
     }
 
     private void checkPermissions() {
@@ -110,6 +100,7 @@ public class MainActivity extends AppCompatActivity {
         String dynamicUrl = getString(R.string.web_url); 
         WebSettings webSettings = webView.getSettings();
 
+        // Aktifkan fitur penting
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true); 
         webSettings.setDatabaseEnabled(true);
@@ -117,7 +108,8 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setAllowContentAccess(true);
         webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
         
-        // Mematikan efek bounce agar tidak mengunci scroll saat chat dibuka
+        // --- PERBAIKAN: AKSELERASI HARDWARE UNTUK SCROLL MULUS ---
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         webView.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
