@@ -1,7 +1,6 @@
 package com.tufanakcay.androidwebview;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import android.os.Bundle;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
@@ -10,7 +9,6 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
-import android.webkit.DownloadListener;
 import android.webkit.URLUtil;
 import android.webkit.ValueCallback;
 import android.app.DownloadManager;
@@ -27,13 +25,12 @@ import android.content.pm.PackageManager;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import android.content.Intent; 
-import android.view.MotionEvent;
-import android.view.View; // Tambahan untuk View.LAYER_TYPE_HARDWARE
+import android.view.View;
 
 public class MainActivity extends AppCompatActivity {
 
     WebView webView;
-    SwipeRefreshLayout swipeRefresh;
+    // Variabel swipeRefresh telah dihapus
     
     private ValueCallback<Uri[]> mUploadMessage;
     private final static int FILECHOOSER_RESULTCODE = 1;
@@ -50,32 +47,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void init() {
         webView = findViewById(R.id.webView);
-        swipeRefresh = findViewById(R.id.swipeRefresh);
-
-        swipeRefresh.setOnRefreshListener(() -> {
-            webView.reload();
-        });
-
-        // --- PERBAIKAN SCROLL: DETEKSI KONFLIK SWIPEREFRESH ---
-        // Kita menggunakan OnScrollChangeListener untuk memastikan SwipeRefresh 
-        // HANYA aktif jika posisi scroll benar-benar di paling atas (0).
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            webView.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
-                // Jika scrollY > 0, berarti kita sedang scroll ke bawah, matikan SwipeRefresh
-                swipeRefresh.setEnabled(scrollY <= 0);
-            });
-        }
-
-        // Penanganan tambahan untuk gestur sentuhan (Swipe vs Scroll Internal)
-        webView.setOnTouchListener((v, event) -> {
-            if (event.getAction() == MotionEvent.ACTION_MOVE) {
-                // Jika webview tidak di posisi 0, jangan biarkan SwipeRefresh mengambil alih
-                if (webView.getScrollY() > 0) {
-                    swipeRefresh.setEnabled(false);
-                }
-            }
-            return false;
-        });
+        // Inisialisasi swipeRefresh dan Listener-nya telah dihapus
+        
+        // --- PENGATURAN TAMPILAN WEBVIEW ---
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        webView.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
     }
 
     private void checkPermissions() {
@@ -100,7 +76,6 @@ public class MainActivity extends AppCompatActivity {
         String dynamicUrl = getString(R.string.web_url); 
         WebSettings webSettings = webView.getSettings();
 
-        // Aktifkan fitur penting
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true); 
         webSettings.setDatabaseEnabled(true);
@@ -108,10 +83,6 @@ public class MainActivity extends AppCompatActivity {
         webSettings.setAllowContentAccess(true);
         webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
         
-        // --- PERBAIKAN: AKSELERASI HARDWARE UNTUK SCROLL MULUS ---
-        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-        webView.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         }
@@ -230,14 +201,14 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onPageFinished(WebView view, String url) {
              super.onPageFinished(view, url);
-             swipeRefresh.setRefreshing(false); 
+             // swipeRefresh.setRefreshing(false) telah dihapus
              view.loadUrl("javascript:window.print = function() { AndroidPrint.performPrint(); }");
         }
 
         @Override
         public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
             if (request.isForMainFrame()) {
-                swipeRefresh.setRefreshing(false);
+                // swipeRefresh.setRefreshing(false) telah dihapus
                 String failingUrl = request.getUrl().toString();
                 String htmlData = "<html><body style='display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; margin:0; background-color:#F5F5F5;'>"
                                 + "<div style='text-align:center; padding:20px;'>"
