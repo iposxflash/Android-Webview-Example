@@ -1,46 +1,34 @@
-// app/build.gradle
-
-// 1. BLOK PLUGIN HARUS DI AWAL FILE
 plugins {
     id 'com.android.application'
+    // Tambahkan plugin kotlin-android jika Anda menggunakan Kotlin
+    // id 'org.jetbrains.kotlin.android' 
 }
 
-// 2. KODE KRITIS: MEMBACA FILE PROPERTI DI ROOT
 def releasePropsFile = rootProject.file('release.properties')
 def releaseProps = new Properties()
 if (releasePropsFile.exists()) {
-    try {
-        // Menggunakan FileInputStream yang benar
-        releaseProps.load(new FileInputStream(releasePropsFile))
-    } catch (FileNotFoundException e) {
-        println "WARNING: release.properties file not found: " + e.getMessage()
-    }
-} else {
-    println "WARNING: release.properties file does not exist. Using default/empty signing configs."
+    releaseProps.load(new FileInputStream(releasePropsFile))
 }
-// -----------------------------------------------------------
 
-// 3. BLOK ANDROID HARUS MENGIKUTI DAN MENGANDUNG SEMUA KONFIGURASI SDK/VERSION
 android {
-    // Pastikan compileSdk didefinisikan di sini
-    compileSdk 33
-    namespace 'com.tufanakcay.androidwebview' 
+    // 1. UPDATE: Gunakan SDK 34 untuk standar terbaru
+    compileSdk 34
+    namespace 'com.musik.offline' // Sesuaikan dengan id aplikasi Anda
 
-    // defaultConfig harus ada di dalam blok android {}
     defaultConfig {
-        applicationId "com.tufanakcay.androidwebview" 
+        applicationId "com.musik.offline" // Sesuaikan dengan id aplikasi Anda
         minSdk 23
-        targetSdk 33
+        // 2. UPDATE: Target SDK harus 34 agar tidak diblokir Play Protect
+        targetSdk 34 
         versionCode 1
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
-    
-    // Konfigurasi Signing Dinamis
+
     signingConfigs {
         release {
-            // Menggunakan file() karena Keystore ada di folder 'app/'
+            // Pastikan file .jks Anda diletakkan di folder android/app/
             storeFile file(releaseProps.getProperty('storeFile') ?: "release-key.jks") 
             storePassword releaseProps.getProperty('storePassword') ?: "" 
             keyAlias releaseProps.getProperty('keyAlias') ?: "" 
@@ -50,22 +38,25 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            // 3. UPDATE: Aktifkan minifyEnabled & shrinkResources untuk keamanan
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             
             signingConfig signingConfigs.release
         }
     }
+    
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
 }
 
-// 4. BLOK DEPENDENSI DI AKHIR
 dependencies {
+    // 4. UPDATE: Gunakan versi library yang lebih stabil/baru
     implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.9.0'
+    implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
