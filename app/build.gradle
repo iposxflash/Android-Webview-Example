@@ -1,25 +1,35 @@
+// app/build.gradle
+
+// 1. BLOK PLUGIN
 plugins {
     id 'com.android.application'
-    // Tambahkan plugin kotlin-android jika Anda menggunakan Kotlin
-    // id 'org.jetbrains.kotlin.android' 
+    // Gradle modern menyarankan penggunaan plugin secret atau environment variables 
+    // untuk mengelola data sensitif, namun kita tetap gunakan logic Anda yang diperbaiki.
 }
 
+// 2. KODE KRITIS: MEMBACA FILE PROPERTI
+// Diperbarui dengan penanganan null yang lebih aman
 def releasePropsFile = rootProject.file('release.properties')
 def releaseProps = new Properties()
 if (releasePropsFile.exists()) {
-    releaseProps.load(new FileInputStream(releasePropsFile))
+    releasePropsFile.withInputStream { releaseProps.load(it) }
+} else {
+    println "WARNING: release.properties file does not exist. Using environment variables or defaults."
 }
 
+// -----------------------------------------------------------
+
+// 3. BLOK ANDROID (Update ke SDK 35/36 sesuai standar 2026)
 android {
-    // 1. UPDATE: Gunakan SDK 34 untuk standar terbaru
-    compileSdk 34
-    namespace 'com.musik.offline' // Sesuaikan dengan id aplikasi Anda
+    // Android 15/16 standard (2026)
+    compileSdk 35 
+    namespace 'com.tufanakcay.androidwebview'
 
     defaultConfig {
-        applicationId "com.musik.offline" // Sesuaikan dengan id aplikasi Anda
-        minSdk 23
-        // 2. UPDATE: Target SDK harus 34 agar tidak diblokir Play Protect
-        targetSdk 34 
+        applicationId "com.tufanakcay.androidwebview"
+        // Minimal SDK 24 (Nougat) sekarang menjadi standar minimum banyak library modern
+        minSdk 24 
+        targetSdk 35
         versionCode 1
         versionName "1.0"
 
@@ -28,37 +38,40 @@ android {
 
     signingConfigs {
         release {
-            // Pastikan file .jks Anda diletakkan di folder android/app/
-            storeFile file(releaseProps.getProperty('storeFile') ?: "release-key.jks") 
-            storePassword releaseProps.getProperty('storePassword') ?: "" 
-            keyAlias releaseProps.getProperty('keyAlias') ?: "" 
-            keyPassword releaseProps.getProperty('keyPassword') ?: ""
+            // Mengambil dari properties, jika tidak ada cek Environment Variable (Best Practice)
+            storeFile file(releaseProps.getProperty('storeFile') ?: System.getenv("KEYSTORE_PATH") ?: "release-key.jks")
+            storePassword releaseProps.getProperty('storePassword') ?: System.getenv("KEYSTORE_PASSWORD") ?: ""
+            keyAlias releaseProps.getProperty('keyAlias') ?: System.getenv("KEY_ALIAS") ?: ""
+            keyPassword releaseProps.getProperty('keyPassword') ?: System.getenv("KEY_PASSWORD") ?: ""
         }
     }
 
     buildTypes {
         release {
-            // 3. UPDATE: Aktifkan minifyEnabled & shrinkResources untuk keamanan
-            minifyEnabled true
+            // Mengaktifkan R8 (penerus Proguard) untuk optimasi di tahun 2026
+            minifyEnabled true 
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             
             signingConfig signingConfigs.release
         }
     }
-    
+
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        // Java 17 sekarang menjadi standar minimum untuk Android development di 2026
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 }
 
+// 4. BLOK DEPENDENSI (Versi Terbaru per 2026)
 dependencies {
-    // 4. UPDATE: Gunakan versi library yang lebih stabil/baru
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation 'com.google.android.material:material:1.11.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.2.0'
+    
+    // Testing
     testImplementation 'junit:junit:4.13.2'
-    androidTestImplementation 'androidx.test.ext:junit:1.1.5'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
 }
