@@ -1,16 +1,32 @@
+// settings.gradle
+
 pluginManagement {
     repositories {
+        // Google didahulukan karena plugin Android (AGP) berasal dari sini
+        google {
+            content {
+                includeGroupAndSubgroups("com.android")
+                includeGroupAndSubgroups("com.google")
+                includeGroupAndSubgroups("androidx")
+            }
+        }
         gradlePluginPortal()
-        google()
         mavenCentral()
     }
 }
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
+        // Prioritaskan Google untuk library Android agar pencarian dependency lebih cepat
         google()
         mavenCentral()
+        
+        // Opsional: Jika Anda menggunakan library khusus yang belum ada di MavenCentral
+        // maven { url 'https://jitpack.io' } 
     }
 }
-rootProject.name = "Android Webview Example"
+
+// Nama project sebaiknya tidak menggunakan spasi untuk menghindari isu di beberapa CI/CD
+rootProject.name = "AndroidWebviewExample"
 include ':app'
